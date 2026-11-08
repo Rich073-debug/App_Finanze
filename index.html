@@ -198,7 +198,9 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
   </div>
   <div class="card">
     <h2>Backup</h2>
-    <p class="muted" style="margin-top:0">I dati sono salvati solo su questo telefono. Fai un backup ogni tanto: se cancelli i dati di Chrome, li perdi.</p>
+    <p class="muted" style="margin-top:0">I dati sono salvati solo su questo telefono. Ogni mese, alla prima apertura, l'app ti propone il backup. Meglio salvarlo su Google Drive: così resta al sicuro anche se perdi il telefono.</p>
+    <p class="muted" id="ultimoBk"></p>
+    <button class="btn" style="width:100%;margin-bottom:10px" onclick="chiediBackup()">💾 Fai backup ora</button>
     <div class="grid2">
       <button class="btn sec" onclick="esporta()">⬇️ Esporta</button>
       <button class="btn sec" onclick="document.getElementById('fImport').click()">⬆️ Importa</button>
@@ -627,6 +629,7 @@ function gestisciURL(){
   if(p.has('voce')){ const v = importoDaVoce(p.get('voce')); if(v) aggiungiMovimento({importo:v, fonte:'contanti', desc:''}); else toast('Non ho capito l\'importo: "'+p.get('voce')+'"'); return; }
   if(p.has('stipendio')){ const v=numeroIt(p.get('stipendio')); if(!isNaN(v)) nuovoStipendio(v); return; }
   const az = p.get('azione');
+  if(az==='backup') return dopoSblocco(()=>setTimeout(chiediBackup, 200));
   if(az==='voce') dopoSblocco(()=>setTimeout(openVoce, 200));
   if(az==='contanti') dopoSblocco(()=>setTimeout(openAdd, 200));
 }
@@ -743,6 +746,7 @@ function render(){
   document.getElementById('logNotif').innerHTML = (S.logNotifiche||[]).slice().reverse().map(l=>`<div class="row" style="display:block"><div class="s">${new Date(l.ts).toLocaleString('it-IT')} ${l.fonte?'· '+esc(l.fonte):''}</div><div style="font-size:13.5px">${esc(l.titolo)} — ${esc(l.testo)}</div><div class="s ok">→ ${esc(l.esito||'')}</div></div>`).join('') || '<div class="empty">Ancora nessuna</div>';
   // ---- IMPOSTAZIONI
   renderSicurezza();
+  document.getElementById('ultimoBk').textContent = S.ultimoBackup ? 'Ultimo backup: '+new Date(S.ultimoBackup).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : 'Nessun backup ancora fatto';
   if(vista==='imp' && document.activeElement?.tagName!=='INPUT'){
     document.getElementById('iStip').value = S.impostazioni.stipendio;
     document.getElementById('iRispConti').innerHTML = S.conti.map(k=>
@@ -958,9 +962,37 @@ function salvaImpostazioni(){
   if(gf>=1 && gf<=28) S.impostazioni.giornoFine = gf;
   save(); render(); toast('Impostazioni salvate');
 }
+function fileBackup(){
+  S.ultimoBackup = Date.now(); save();
+  return new File([JSON.stringify(S,null,1)], 'finanze-backup-'+isoDate(today())+'.json', {type:'application/json'});
+}
 function esporta(){
-  const blob = new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'finanze-backup-'+isoDate(today())+'.json'; a.click();
+  const f = fileBackup();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
+  closeSheet(); render(); toast('⬇️ Backup salvato nella cartella Download');
+}
+// invia il backup a Google Drive, email, WhatsApp… (fuori dal telefono)
+async function condividiBackup(){
+  const f = fileBackup();
+  try{ await navigator.share({files:[f], title:'Backup Finanze'}); closeSheet(); render(); toast('📤 Backup inviato'); }
+  catch(e){ if(e.name!=='AbortError'){ esporta(); } }
+}
+function puoCondividere(){ try{ return !!(navigator.canShare && navigator.canShare({files:[new File(['x'],'x.json',{type:'application/json'})]})); }catch(e){ return false; } }
+function chiediBackup(){
+  openSheet(`<h3>💾 Backup del mese</h3>
+    <p class="muted">È iniziato un nuovo mese: salva una copia dei tuoi dati. Se perdi il telefono o cancelli Chrome, con questo file recuperi tutto.</p>
+    ${puoCondividere()?`<button class="btn" style="width:100%;margin-top:8px" onclick="condividiBackup()">📤 Salva su Google Drive / invia</button>`:''}
+    <button class="btn ${puoCondividere()?'sec':''}" style="width:100%;margin-top:10px" onclick="esporta()">⬇️ Salva sul telefono</button>
+    <button class="btn sec" style="width:100%;margin-top:10px;background:none;color:var(--muted)" onclick="S.backupRimandato=isoDate(today());save();closeSheet()">Più tardi</button>`);
+}
+// al primo avvio di ogni mese (o se l'ultimo backup ha più di 31 giorni) propone il backup
+function controllaBackup(){
+  if(!S.setupFatto || !S.movimenti.length || bloccato) return;
+  if(document.getElementById('sheetBg').classList.contains('on')) return; // c'è già un'altra richiesta aperta
+  if(S.backupRimandato === isoDate(today())) return;
+  const u = S.ultimoBackup ? new Date(S.ultimoBackup) : null, o = new Date();
+  const dovuto = !u || u.getMonth()!==o.getMonth() || u.getFullYear()!==o.getFullYear();
+  if(dovuto) chiediBackup();
 }
 function importa(inp){
   const f = inp.files[0]; if(!f) return;
@@ -1144,7 +1176,7 @@ blocca();
 render();
 renderSicurezza();
 gestisciURL();
-if(!bloccato) primoAvvio(); else inAttesa.push(primoAvvio);
+if(!bloccato){ primoAvvio(); controllaBackup(); } else inAttesa.push(primoAvvio, controllaBackup);
 // se l'app è già aperta, un nuovo link con # non ricarica la pagina: lo intercettiamo qui
 window.addEventListener('hashchange', ()=>{ S = load(); gestisciURL(); });
 // aggiorna a mezzanotte / quando torni sull'app
@@ -1152,6 +1184,7 @@ document.addEventListener('visibilitychange', ()=>{
   if(document.hidden){ nascostoDa = Date.now(); return; }
   if(attivo() && !bloccato && Date.now()-nascostoDa >= (SEC.ritardo ?? 60000)) blocca();
   S = load(); render();
+  if(!bloccato && !document.getElementById('sheetBg').classList.contains('on')) controllaBackup();
 });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
