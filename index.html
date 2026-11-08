@@ -74,6 +74,14 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 .empty{color:var(--muted);text-align:center;padding:18px 0;font-size:14px}
 .seg{display:flex;background:var(--card2);border-radius:12px;padding:3px;margin-bottom:12px}
 .seg button{flex:1;background:none;padding:9px;border-radius:10px;font-size:14px;color:var(--muted)}
+.lock{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.lock.on{display:flex}
+.lock .dots{display:flex;gap:14px;margin:22px 0 8px}
+.lock .dots span{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted)}
+.lock .dots span.f{background:var(--accent);border-color:var(--accent)}
+.keypad{display:grid;grid-template-columns:repeat(3,76px);gap:14px;margin-top:18px}
+.keypad button{height:76px;border-radius:50%;background:var(--card2);font-size:28px;font-weight:600}
+.keypad button.t{background:none;font-size:15px;color:var(--muted)}
 .seg button.on{background:var(--card);color:var(--text);font-weight:600}
 </style>
 </head>
@@ -177,9 +185,13 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <button class="btn" style="width:100%;margin-top:8px" onclick="salvaImpostazioni()">Salva</button>
   </div>
   <div class="card">
+    <h2>Sicurezza</h2>
+    <div id="secStato"></div>
+  </div>
+  <div class="card">
     <h2>I miei conti</h2>
     <label>Conto principale (ultime cifre del c/c)</label>
-    <input id="iPrinc" placeholder="es. 670">
+    <input id="iPrinc" placeholder="es. 123">
     <p class="muted">Conti secondari: i loro movimenti non pesano sul budget. Tocca per modificare nome e numeri (conto o carte).</p>
     <div id="contiList"></div>
     <button class="btn sec small" style="margin-top:10px" onclick="editConto()">＋ Aggiungi conto</button>
@@ -220,6 +232,15 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 </nav>
 
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<div class="lock" id="lock">
+  <div style="font-size:44px">🔒</div>
+  <h2 style="margin:10px 0 0;font-size:22px">Finanze</h2>
+  <p class="muted" id="lockMsg" style="margin:6px 0 0;text-align:center">Inserisci il PIN</p>
+  <div class="dots" id="lockDots"></div>
+  <div class="keypad" id="keypad"></div>
+  <button class="btn sec" id="btnBio" style="margin-top:22px;display:none" onclick="sbloccaBio()">👆 Usa impronta / volto</button>
+  <button class="btn small sec" style="margin-top:16px;background:none;color:var(--muted)" onclick="pinDimenticato()">PIN dimenticato?</button>
+</div>
 <div class="toast" id="toast"><span id="toastTxt"></span><button class="btn small sec" id="toastBtn" style="display:none"></button></div>
 
 <script>
@@ -430,7 +451,8 @@ function aggiungiMovimento({importo, fonte='contanti', desc='', cat=null, tipo=n
   if(tipo==='fissa' && rif){ const f=S.fisse.find(x=>x.id===rif); if(f && f.conto){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.spostati['f_'+f.id]=true; } }
   save(); render();
   const c = calcola();
-  if(tipo==='var') toast(`✓ ${fmt(importo)} — oggi ti restano ${fmt(c.residuoOggi)}`, 'Annulla', ()=>eliminaMovimento(m.id));
+  if(bloccato) toast('✓ Spesa registrata');
+  else if(tipo==='var') toast(`✓ ${fmt(importo)} — oggi ti restano ${fmt(c.residuoOggi)}`, 'Annulla', ()=>eliminaMovimento(m.id));
   else toast(`✓ ${fmt(importo)} registrata come spesa ${tipo==='fissa'?'fissa':'annuale'} (non tocca il budget giornaliero)`, 'Annulla', ()=>eliminaMovimento(m.id));
   return m;
 }
@@ -605,8 +627,8 @@ function gestisciURL(){
   if(p.has('voce')){ const v = importoDaVoce(p.get('voce')); if(v) aggiungiMovimento({importo:v, fonte:'contanti', desc:''}); else toast('Non ho capito l\'importo: "'+p.get('voce')+'"'); return; }
   if(p.has('stipendio')){ const v=numeroIt(p.get('stipendio')); if(!isNaN(v)) nuovoStipendio(v); return; }
   const az = p.get('azione');
-  if(az==='voce') setTimeout(openVoce, 200);
-  if(az==='contanti') setTimeout(openAdd, 200);
+  if(az==='voce') dopoSblocco(()=>setTimeout(openVoce, 200));
+  if(az==='contanti') dopoSblocco(()=>setTimeout(openAdd, 200));
 }
 
 /* =====================================================================
@@ -720,6 +742,7 @@ function render(){
   document.getElementById('contiList').innerHTML = S.conti.map(k=>`<div class="row" onclick="editConto('${k.id}')"><div class="grow"><div class="t">${esc(k.nome)}</div><div class="s">${esc(k.uso||'')}${k.numero?' · n. '+esc(k.numero):''}</div></div><div class="amt">›</div></div>`).join('');
   document.getElementById('logNotif').innerHTML = (S.logNotifiche||[]).slice().reverse().map(l=>`<div class="row" style="display:block"><div class="s">${new Date(l.ts).toLocaleString('it-IT')} ${l.fonte?'· '+esc(l.fonte):''}</div><div style="font-size:13.5px">${esc(l.titolo)} — ${esc(l.testo)}</div><div class="s ok">→ ${esc(l.esito||'')}</div></div>`).join('') || '<div class="empty">Ancora nessuna</div>';
   // ---- IMPOSTAZIONI
+  renderSicurezza();
   if(vista==='imp' && document.activeElement?.tagName!=='INPUT'){
     document.getElementById('iStip').value = S.impostazioni.stipendio;
     document.getElementById('iRispConti').innerHTML = S.conti.map(k=>
@@ -735,7 +758,7 @@ function render(){
 }
 
 /* ---------------- fogli (sheet) ---------------- */
-function openSheet(html){ document.getElementById('sheet').innerHTML = html; document.getElementById('sheetBg').classList.add('on'); }
+function openSheet(html){ if(bloccato){ inAttesa.push(()=>openSheet(html)); return; } document.getElementById('sheet').innerHTML = html; document.getElementById('sheetBg').classList.add('on'); }
 function closeSheet(){ document.getElementById('sheetBg').classList.remove('on'); stopVoce(); }
 
 let addCat = 'Generale', addFonte = 'contanti';
@@ -989,14 +1012,147 @@ function fineSetup(){
   S.setupFatto = true; save(); closeSheet(); render();
 }
 
+/* =====================================================================
+   SICUREZZA: blocco con PIN e impronta/volto (WebAuthn)
+   Il blocco impedisce di vedere l'app a chi prende il telefono sbloccato.
+   ===================================================================== */
+const SEC_KEY = 'finanze_sicurezza';
+let SEC = (()=>{ try{ return JSON.parse(localStorage.getItem(SEC_KEY))||{}; }catch(e){ return {}; } })();
+let bloccato = false, inAttesa = [], pinBuf = '', nascostoDa = 0, tentativi = 0, attesaFino = 0;
+function salvaSec(){ localStorage.setItem(SEC_KEY, JSON.stringify(SEC)); }
+function attivo(){ return !!SEC.pinHash; }
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+async function hashPin(pin, salt){
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name:'PBKDF2', hash:'SHA-256', salt:unb64(salt), iterations:150000}, key, 256);
+  return b64(bits);
+}
+function dopoSblocco(fn){ if(bloccato) inAttesa.push(fn); else fn(); }
+function blocca(){
+  if(!attivo()) return;
+  bloccato = true; pinBuf = '';
+  const sb = document.getElementById('sheetBg');
+  if(sb.classList.contains('on')){ const html = document.getElementById('sheet').innerHTML; inAttesa.push(()=>openSheet(html)); stopVoce(); }
+  sb.classList.remove('on');
+  document.getElementById('lock').classList.add('on');
+  document.getElementById('btnBio').style.display = SEC.credId ? '' : 'none';
+  disegnaPin('Inserisci il PIN');
+  if(SEC.credId) setTimeout(sbloccaBio, 300);
+}
+function sblocca(){
+  bloccato = false; tentativi = 0;
+  document.getElementById('lock').classList.remove('on');
+  S = load(); render();
+  const q = inAttesa; inAttesa = []; q.forEach(f=>f());
+}
+function disegnaPin(msg){
+  if(msg) document.getElementById('lockMsg').textContent = msg;
+  const n = SEC.pinLen||4;
+  document.getElementById('lockDots').innerHTML = Array.from({length:n},(_,i)=>`<span class="${i<pinBuf.length?'f':''}"></span>`).join('');
+}
+function costruisciTastiera(el, onKey){
+  el.innerHTML = ['1','2','3','4','5','6','7','8','9','','0','⌫'].map(k=>k?`<button ${k==='⌫'?'class="t"':''} data-k="${k}">${k}</button>`:'<span></span>').join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>onKey(b.dataset.k));
+}
+costruisciTastiera(document.getElementById('keypad'), async k=>{
+  if(Date.now() < attesaFino){ disegnaPin(`Troppi tentativi: riprova tra ${Math.ceil((attesaFino-Date.now())/1000)} s`); return; }
+  if(k==='⌫'){ pinBuf = pinBuf.slice(0,-1); disegnaPin(); return; }
+  if(pinBuf.length >= (SEC.pinLen||4)) return;
+  pinBuf += k; disegnaPin();
+  if(pinBuf.length === (SEC.pinLen||4)){
+    const ok = (await hashPin(pinBuf, SEC.salt)) === SEC.pinHash;
+    if(ok) return sblocca();
+    tentativi++; pinBuf = '';
+    if(tentativi >= 5){ attesaFino = Date.now()+30000; tentativi = 0; disegnaPin('Troppi tentativi: attendi 30 secondi'); }
+    else disegnaPin('PIN errato, riprova');
+  }
+});
+async function sbloccaBio(){
+  if(!SEC.credId || !window.PublicKeyCredential) return;
+  try{
+    await navigator.credentials.get({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{type:'public-key', id:unb64(SEC.credId), transports:['internal','hybrid']}],
+      userVerification:'required', timeout:60000 }});
+    sblocca();
+  }catch(e){ disegnaPin('Impronta non riconosciuta: usa il PIN'); }
+}
+function pinDimenticato(){
+  document.getElementById('lockMsg').innerHTML = SEC.credId
+    ? 'Usa l\'impronta o il volto per entrare, poi reimposta il PIN in Impostazioni → Sicurezza.'
+    : 'Senza PIN non è possibile entrare. Puoi solo cancellare i dati dell\'app e ricominciare (poi ricarica il tuo backup).<br><button class="btn danger small" style="margin-top:10px" onclick="if(confirm(\'Cancellare tutti i dati di Finanze da questo telefono?\')){localStorage.clear();location.reload();}">Cancella dati e ricomincia</button>';
+}
+
+/* --- impostazioni sicurezza --- */
+function renderSicurezza(){
+  const el = document.getElementById('secStato'); if(!el) return;
+  const rit = SEC.ritardo ?? 60000;
+  el.innerHTML = !attivo()
+    ? `<p class="muted" style="margin-top:0">Blocco disattivato: chiunque prenda il telefono sbloccato può aprire l'app.</p>
+       <button class="btn" style="width:100%" onclick="impostaPin()">🔒 Attiva blocco con PIN</button>`
+    : `<div class="row"><div class="grow"><div class="t">PIN</div><div class="s">Attivo · ${SEC.pinLen} cifre</div></div><button class="btn small sec" onclick="impostaPin()">Cambia</button></div>
+       <div class="row"><div class="grow"><div class="t">Impronta / volto</div><div class="s">${SEC.credId?'Attiva':'Non attiva'}</div></div>${SEC.credId?`<button class="btn small sec" onclick="SEC.credId=null;salvaSec();renderSicurezza()">Disattiva</button>`:`<button class="btn small" onclick="attivaBio()">Attiva</button>`}</div>
+       <label>Blocca l'app quando la lasci per</label>
+       <div class="chips">${[[0,'Subito'],[60000,'1 minuto'],[300000,'5 minuti']].map(([v,t])=>`<button class="chip ${rit===v?'on':''}" onclick="SEC.ritardo=${v};salvaSec();renderSicurezza()">${t}</button>`).join('')}</div>
+       <button class="btn danger" style="width:100%;margin-top:16px" onclick="disattivaBlocco()">Disattiva blocco</button>`;
+}
+function impostaPin(){
+  let primo = null, buf = '';
+  const lun = 4;
+  openSheet(`<h3>${attivo()?'Nuovo PIN':'Scegli un PIN'}</h3><p class="muted" id="npMsg">Inserisci un PIN di ${lun} cifre</p>
+    <div style="display:flex;gap:14px;justify-content:center;margin:18px 0 4px" id="npDots"></div>
+    <div style="display:flex;justify-content:center"><div class="keypad" id="npPad"></div></div>`);
+  const dots = ()=>{ document.getElementById('npDots').innerHTML = Array.from({length:lun},(_,i)=>`<span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);${i<buf.length?'background:var(--accent);border-color:var(--accent)':''}"></span>`).join(''); };
+  dots();
+  costruisciTastiera(document.getElementById('npPad'), async k=>{
+    if(k==='⌫'){ buf = buf.slice(0,-1); return dots(); }
+    if(buf.length>=lun) return;
+    buf += k; dots();
+    if(buf.length<lun) return;
+    if(primo===null){ primo = buf; buf=''; dots(); document.getElementById('npMsg').textContent = 'Ripeti il PIN per conferma'; return; }
+    if(buf!==primo){ primo=null; buf=''; dots(); document.getElementById('npMsg').textContent = 'I PIN non coincidono: ricomincia'; return; }
+    const salt = b64(crypto.getRandomValues(new Uint8Array(16)));
+    SEC.salt = salt; SEC.pinHash = await hashPin(buf, salt); SEC.pinLen = lun; if(SEC.ritardo===undefined) SEC.ritardo = 60000;
+    salvaSec(); closeSheet(); renderSicurezza();
+    toast('🔒 PIN impostato');
+    if(!SEC.credId && window.PublicKeyCredential) setTimeout(()=>openSheet(`<h3>Vuoi usare anche l'impronta?</h3><p class="muted">Potrai sbloccare l'app con impronta o volto, e usare il PIN solo come riserva.</p><div class="grid2" style="margin-top:14px"><button class="btn sec" onclick="closeSheet()">No, solo PIN</button><button class="btn" onclick="closeSheet();attivaBio()">Sì, attiva</button></div>`), 400);
+  });
+}
+async function attivaBio(){
+  if(!window.PublicKeyCredential){ toast('Questo browser non supporta l\'impronta'); return; }
+  try{
+    const ok = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.();
+    if(ok===false){ toast('Nessuna impronta o volto configurati sul telefono'); return; }
+    const cred = await navigator.credentials.create({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp:{ name:'Finanze', id: location.hostname },
+      user:{ id: crypto.getRandomValues(new Uint8Array(16)), name:'Finanze', displayName:'Finanze' },
+      pubKeyCredParams:[{type:'public-key', alg:-7},{type:'public-key', alg:-257}],
+      authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required', residentKey:'preferred' },
+      timeout:60000, attestation:'none' }});
+    SEC.credId = b64(cred.rawId); salvaSec(); renderSicurezza(); toast('👆 Impronta / volto attivati');
+  }catch(e){ toast('Attivazione annullata o non riuscita'); }
+}
+function disattivaBlocco(){
+  openSheet(`<h3>Disattivare il blocco?</h3><p class="muted">L'app si aprirà senza PIN né impronta.</p>
+    <div class="grid2" style="margin-top:14px"><button class="btn sec" onclick="closeSheet()">Annulla</button><button class="btn danger" onclick="SEC={};salvaSec();closeSheet();renderSicurezza();toast('Blocco disattivato')">Disattiva</button></div>`);
+}
+
 /* ---------------- avvio ---------------- */
+blocca();
 render();
+renderSicurezza();
 gestisciURL();
-primoAvvio();
+if(!bloccato) primoAvvio(); else inAttesa.push(primoAvvio);
 // se l'app è già aperta, un nuovo link con # non ricarica la pagina: lo intercettiamo qui
 window.addEventListener('hashchange', ()=>{ S = load(); gestisciURL(); });
 // aggiorna a mezzanotte / quando torni sull'app
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ S = load(); render(); } });
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){ nascostoDa = Date.now(); return; }
+  if(attivo() && !bloccato && Date.now()-nascostoDa >= (SEC.ritardo ?? 60000)) blocca();
+  S = load(); render();
+});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
