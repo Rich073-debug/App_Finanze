@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1714">
+<title>Finanze</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0f1714; --card:#17221e; --card2:#1e2c27; --line:#2a3a34;
+  --text:#e8f0ec; --muted:#8fa39a; --accent:#3ee6b4; --accent-d:#1fae86;
+  --warn:#f5b84a; --bad:#ff6b6b; --radius:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{padding:calc(14px + env(safe-area-inset-top)) 18px 6px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.2px}
+header small{color:var(--muted);font-size:13px}
+main{padding:6px 14px}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:0 0 10px;font-weight:600}
+.hero{text-align:center;padding:22px 16px}
+.hero .label{color:var(--muted);font-size:14px}
+.hero .big{font-size:52px;font-weight:800;margin:6px 0 2px;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.hero .sub{color:var(--muted);font-size:14px}
+.ok{color:var(--accent)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+.bar{height:10px;background:var(--card2);border-radius:6px;overflow:hidden;margin:14px 0 4px}
+.bar>div{height:100%;background:var(--accent);border-radius:6px;transition:width .3s}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card2);border-radius:14px;padding:12px}
+.stat .k{font-size:12px;color:var(--muted)} .stat .v{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.btn{background:var(--accent);color:#06261c;font-weight:700;border-radius:14px;padding:14px;font-size:16px}
+.btn.sec{background:var(--card2);color:var(--text)}
+.btn.small{padding:8px 12px;font-size:14px;border-radius:10px}
+.btn.danger{background:#3a1f22;color:var(--bad)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);gap:10px}
+.row:last-child{border-bottom:0}
+.row .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .s{font-size:12.5px;color:var(--muted);margin-top:2px}
+.row .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .grow{flex:1;min-width:0}
+.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:8px;background:var(--card2);color:var(--muted);margin-right:4px}
+.tag.y{background:#3a3016;color:var(--warn)}
+nav{position:fixed;bottom:0;left:0;right:0;background:#121c18ee;backdrop-filter:blur(10px);display:flex;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;padding:10px 0 12px;color:var(--muted);font-size:11.5px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--accent)}
+.view{display:none} .view.on{display:block}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
+input,select{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px;font:inherit;font-size:16px}
+input:focus,select:focus{outline:2px solid var(--accent-d);border-color:transparent}
+.sheet-bg{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:20}
+.sheet-bg.on{display:flex}
+.sheet{background:var(--card);width:100%;border-radius:22px 22px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+.sheet h3{margin:0 0 6px;font-size:19px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{background:var(--card2);padding:8px 12px;border-radius:20px;font-size:14px}
+.chip.on{background:var(--accent);color:#06261c;font-weight:700}
+.toast{position:fixed;left:14px;right:14px;bottom:calc(86px + env(safe-area-inset-bottom));background:#24352f;border:1px solid var(--line);border-radius:14px;padding:13px 15px;z-index:30;display:none;align-items:center;gap:10px;box-shadow:0 8px 30px #0008}
+.toast.on{display:flex}
+.toast span{flex:1}
+.mic{width:96px;height:96px;border-radius:50%;background:var(--accent);margin:18px auto;display:flex;align-items:center;justify-content:center}
+.mic.rec{animation:pulse 1s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #3ee6b488}100%{box-shadow:0 0 0 22px #3ee6b400}}
+.muted{color:var(--muted);font-size:13.5px;line-height:1.45}
+.amount-input{font-size:36px;font-weight:800;text-align:center;padding:14px}
+code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;word-break:break-all}
+.empty{color:var(--muted);text-align:center;padding:18px 0;font-size:14px}
+.seg{display:flex;background:var(--card2);border-radius:12px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;background:none;padding:9px;border-radius:10px;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--text);font-weight:600}
+</style>
+</head>
+<body>
+
+<header>
+  <div><h1 id="hTitle">Oggi</h1><small id="hSub"></small></div>
+  <button class="btn small sec" id="btnStip" onclick="openStipendio()">💶 Stipendio</button>
+</header>
+
+<main>
+<!-- ============ OGGI ============ -->
+<section class="view on" id="v-oggi">
+  <div class="card hero">
+    <div class="label">Puoi ancora spendere oggi</div>
+    <div class="big" id="residuoOggi">—</div>
+    <div class="sub" id="budgetOggiTxt"></div>
+    <div class="bar"><div id="barOggi" style="width:0%"></div></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" onclick="openAdd()">＋ Spesa</button>
+    <button class="btn sec" onclick="openVoce()">🎤 Detta</button>
+  </div>
+
+  <div class="card">
+    <h2>Periodo stipendio</h2>
+    <div class="grid2">
+      <div class="stat"><div class="k">Disponibile periodo</div><div class="v" id="sDisp">—</div></div>
+      <div class="stat"><div class="k">Già speso</div><div class="v" id="sSpeso">—</div></div>
+      <div class="stat"><div class="k">Giorni rimasti</div><div class="v" id="sGiorni">—</div></div>
+      <div class="stat"><div class="k">Risparmio previsto</div><div class="v" id="sProiez">—</div></div>
+    </div>
+    <p class="muted" id="periodoTxt" style="margin:12px 0 0"></p>
+  </div>
+
+  <div class="card">
+    <h2>Soldi da spostare</h2>
+    <div id="pianoSposta"></div>
+    <h2 style="margin-top:16px">Sul conto principale devono restare</h2>
+    <div id="pianoResta"></div>
+  </div>
+
+  <div class="card" id="cardPrev">
+    <h2>Previsioni e scadenze</h2>
+    <div id="prevList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Ultimi movimenti</h2>
+    <div id="ultimi"></div>
+  </div>
+</section>
+
+<!-- ============ MOVIMENTI ============ -->
+<section class="view" id="v-mov">
+  <div class="seg" id="segMov">
+    <button class="on" data-f="periodo">Questo periodo</button>
+    <button data-f="tutti">Tutti</button>
+  </div>
+  <div class="card" id="movRiepilogo"></div>
+  <div class="card"><div id="movList"></div></div>
+</section>
+
+<!-- ============ FISSE ============ -->
+<section class="view" id="v-fisse">
+  <div class="card">
+    <h2>Spese fisse mensili</h2>
+    <div id="fisseList"></div>
+    <button class="btn sec small" style="margin-top:10px" onclick="editFissa()">＋ Aggiungi spesa fissa</button>
+  </div>
+  <div class="card">
+    <h2>Scadenze annuali (accantonamento)</h2>
+    <p class="muted" style="margin-top:0">Ogni mese l'app mette da parte una quota, così alla scadenza i soldi ci sono già.</p>
+    <div id="annualiList"></div>
+    <button class="btn sec small" style="margin-top:10px" onclick="editAnnuale()">＋ Aggiungi scadenza</button>
+  </div>
+  <div class="card">
+    <h2>Entrate extra</h2>
+    <p class="muted" style="margin-top:0">Trasferte, lavori extra, rimborsi: aumentano il budget del periodo in cui le aggiungi.</p>
+    <div id="entrateList"></div>
+    <button class="btn sec small" style="margin-top:10px" onclick="editEntrata()">＋ Aggiungi entrata</button>
+  </div>
+</section>
+
+<!-- ============ IMPOSTAZIONI ============ -->
+<section class="view" id="v-imp">
+  <div class="card">
+    <h2>Budget</h2>
+    <label>Stipendio fisso mensile (€)</label>
+    <input type="number" inputmode="decimal" step="0.01" id="iStip">
+    <label>Obiettivo di risparmio di questo periodo, diviso per conto (€)</label>
+    <div id="iRispConti"></div>
+    <p class="muted">Questi soldi vengono tolti dal budget e compaiono in "Soldi da spostare". Il PAC verso il libretto è già tra le spese fisse.</p>
+    <label>Carte del conto principale (ultime cifre, separate da virgola)</label>
+    <input id="iCarte" placeholder="es. 1234">
+    <p class="muted">I pagamenti con altre carte (Revolut, Postepay, prepagata) vengono ignorati: non pesano sul budget.</p>
+    <label>Il periodo finisce il giorno… del mese successivo</label>
+    <input type="number" inputmode="numeric" min="1" max="28" id="iFine">
+    <p class="muted">Lo stipendio arriva tra il 16 e il 21: dividendo il budget fino al 21 resti coperto anche quando arriva tardi.</p>
+    <button class="btn" style="width:100%;margin-top:8px" onclick="salvaImpostazioni()">Salva</button>
+  </div>
+  <div class="card">
+    <h2>I miei conti</h2>
+    <label>Conto principale (ultime cifre del c/c)</label>
+    <input id="iPrinc" placeholder="es. 670">
+    <p class="muted">Conti secondari: i loro movimenti non pesano sul budget. Tocca per modificare nome e numeri (conto o carte).</p>
+    <div id="contiList"></div>
+    <button class="btn sec small" style="margin-top:10px" onclick="editConto()">＋ Aggiungi conto</button>
+  </div>
+  <div class="card">
+    <h2>Backup</h2>
+    <p class="muted" style="margin-top:0">I dati sono salvati solo su questo telefono. Fai un backup ogni tanto: se cancelli i dati di Chrome, li perdi.</p>
+    <div class="grid2">
+      <button class="btn sec" onclick="esporta()">⬇️ Esporta</button>
+      <button class="btn sec" onclick="document.getElementById('fImport').click()">⬆️ Importa</button>
+    </div>
+    <input type="file" id="fImport" accept="application/json" style="display:none" onchange="importa(this)">
+  </div>
+  <div class="card">
+    <h2>Collegamento automatico (MacroDroid)</h2>
+    <p class="muted" style="margin-top:0">L'app accetta comandi tramite link. MacroDroid li apre quando arriva una notifica o un SMS della banca.</p>
+    <p class="muted">Notifica / SMS (l'app capisce da sola importo, negozio e tipo):<br><code id="lnkNotif"></code></p>
+    <p class="muted">Spesa diretta:<br><code id="lnkAdd"></code></p>
+    <p class="muted">Dettatura vocale:<br><code id="lnkVoce"></code></p>
+    <label>Prova il riconoscimento: incolla il testo di una notifica</label>
+    <input id="iTestNotif" placeholder="es. Supermercato 9,21 € …">
+    <button class="btn sec small" style="margin-top:8px" onclick="testNotifica()">Analizza</button>
+    <p class="muted" id="testOut"></p>
+    <label>Ultime notifiche ricevute</label>
+    <div id="logNotif"></div>
+  </div>
+  <div class="card">
+    <button class="btn danger" style="width:100%" onclick="resetTutto()">Cancella tutti i dati</button>
+  </div>
+</section>
+</main>
+
+<nav id="nav">
+  <button class="on" data-v="oggi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Oggi</button>
+  <button data-v="mov"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Movimenti</button>
+  <button data-v="fisse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Fisse</button>
+  <button data-v="imp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Impostazioni</button>
+</nav>
+
+<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"><span id="toastTxt"></span><button class="btn small sec" id="toastBtn" style="display:none"></button></div>
+
+<script>
+/* =====================================================================
+   DATI
+   ===================================================================== */
+const KEY = 'finanze_v1';
+const CATEGORIE = ['Generale','Spesa','Carburante','Ristorante','Casa','Salute','Svago','Altro'];
+const CAT_KEYWORDS = {
+  Carburante:['eni','q8','tamoil','esso','ip ','api ','carbur','benzin','distributore','agip','total','repsol','petrol','fuel','energas','enilive'],
+  Spesa:['supermerc','conad','coop','esselunga','lidl','eurospin','carrefour','gala','pam','md ','despar','iper','tigre','todis','penny','aldi','famila','sigma','crai','a&o','simply'],
+  Ristorante:['mc donald','mcdonald','burger','pizz','ristor','trattoria','bar ','caff','sushi','kebab','osteria','paninoteca','just eat','deliveroo','glovo'],
+  Salute:['farmac','parafarm','medic','ottica'],
+};
+
+function defaultState(){
+  // l'app parte vuota: i dati personali si inseriscono al primo avvio e restano solo sul telefono
+  return {
+    v:3,
+    impostazioni:{ stipendio:0, giornoFine:21, carte:'', contoPrincipale:'' },
+    // conti secondari: i loro movimenti NON pesano sul budget; ricevono i soldi da spostare
+    conti:[],
+    // obiettivo di risparmio del periodo, diviso tra i conti
+    risparmio:{},
+    periodo:{ inizio:isoDate(today()), stipendio:0, spostati:{}, pagate:{} },
+    fisse:[],
+    annuali:[],
+    entrate:[],
+    movimenti:[],
+    storicoPeriodi:[],
+    setupFatto:false,
+  };
+}
+let S = load();
+function load(){
+  try{ const raw = localStorage.getItem(KEY); if(raw){ const st = Object.assign(defaultState(), JSON.parse(raw)); st.v = Math.max(st.v||1, 3); return st; } }catch(e){}
+  return defaultState();
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast('⚠️ Impossibile salvare i dati'); } }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* =====================================================================
+   DATE E FORMATI
+   ===================================================================== */
+const DAY = 86400000;
+function today(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+function parseDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function dayStart(ts){ const d=new Date(ts); d.setHours(0,0,0,0); return d; }
+function daysBetween(a,b){ return Math.round((dayStart(b)-dayStart(a))/DAY); }
+const fmt = n => new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(n||0);
+const fmt0 = n => new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n||0);
+const fDate = d => d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+const fDateLong = d => d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
+const fTime = ts => new Date(ts).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function round2(n){ return Math.round(n*100)/100; }
+
+/* =====================================================================
+   CALCOLO BUDGET
+   ===================================================================== */
+function finePeriodo(){
+  const i = parseDate(S.periodo.inizio);
+  const gf = S.impostazioni.giornoFine;
+  return new Date(i.getFullYear(), i.getMonth()+1, gf);
+}
+function inPeriodo(ts){
+  const t = dayStart(ts), i = parseDate(S.periodo.inizio);
+  return t >= i;   // il periodo dura fino al prossimo stipendio registrato
+}
+// Quante buste paga restano prima della scadenza (inclusa quella attuale)
+function mesiAllaScadenza(a, inizioStr){
+  if(!a.scadenza) return 12;
+  const i = parseDate(inizioStr), s = parseDate(a.scadenza);
+  let m = (s.getFullYear()-i.getFullYear())*12 + (s.getMonth()-i.getMonth());
+  if(s.getDate() >= i.getDate()) m += 1;
+  return Math.max(1, m);
+}
+function quotaAnnuale(a, inizioStr = S.periodo.inizio){
+  const resto = Math.max(0, a.importo - (a.accantonato||0));
+  return round2(resto / mesiAllaScadenza(a, inizioStr));
+}
+function calcola(){
+  const oggi = today();
+  const fine = finePeriodo();
+  const inizio = parseDate(S.periodo.inizio);
+  const stip = S.periodo.stipendio || S.impostazioni.stipendio;
+  const entrate = S.entrate.filter(e=>parseDate(e.data)>=inizio).reduce((s,e)=>s+e.importo,0);
+  const fisse = S.fisse.filter(f=>f.attiva).reduce((s,f)=>s+f.importo,0);
+  const quote = S.annuali.reduce((s,a)=>s+quotaAnnuale(a),0);
+  const risparmio = totRisparmio();
+  const disponibile = stip + entrate - fisse - quote - risparmio;
+
+  const varPeriodo = S.movimenti.filter(m=>m.tipo==='var' && inPeriodo(m.ts));
+  const spesoPrima = varPeriodo.filter(m=>dayStart(m.ts)<oggi).reduce((s,m)=>s+m.importo,0);
+  const spesoOggi = varPeriodo.filter(m=>dayStart(m.ts).getTime()===oggi.getTime()).reduce((s,m)=>s+m.importo,0);
+  const spesoTot = spesoPrima + spesoOggi;
+
+  const giorniTot = Math.max(1, daysBetween(inizio, fine)+1);
+  const giorniRim = Math.max(1, daysBetween(oggi, fine)+1);
+  const ritardo = oggi > fine;
+  const budgetOggi = (disponibile - spesoPrima) / giorniRim;
+  const residuoOggi = budgetOggi - spesoOggi;
+
+  // proiezione: media giornaliera finora, applicata ai giorni rimanenti
+  const giorniPassati = Math.max(1, daysBetween(inizio, oggi)+1);
+  const mediaGiorno = spesoTot / giorniPassati;
+  const proiezione = disponibile - spesoTot - mediaGiorno*(giorniRim-1);
+
+  return {oggi,fine,inizio,stip,entrate,fisse,quote,risparmio,disponibile,spesoPrima,spesoOggi,spesoTot,giorniTot,giorniRim,ritardo,budgetOggi,residuoOggi,mediaGiorno,proiezione};
+}
+
+function numeriConto(c){ return String(c.numero||'').split(/[,\s]+/).filter(Boolean); }
+function ultimoGiorno(y,m){ return new Date(y,m+1,0).getDate(); }
+// data in cui la spesa fissa cade dentro il periodo attuale (31 = ultimo giorno del mese)
+function dataFissa(f){
+  const i = parseDate(S.periodo.inizio);
+  for(let k=0;k<2;k++){
+    const y=i.getFullYear(), m=i.getMonth()+k;
+    const d = new Date(y, m, Math.min(f.giorno||1, ultimoGiorno(y, m)));
+    if(d >= i) return d;
+  }
+  return new Date(i.getFullYear(), i.getMonth()+1, Math.min(f.giorno||1, ultimoGiorno(i.getFullYear(), i.getMonth()+1)));
+}
+function testoGiorno(g){ return g>=28 ? 'fine mese' : 'giorno '+g; }
+function totRisparmio(){ return Object.values(S.risparmio||{}).reduce((s,v)=>s+(+v||0),0); }
+function nomeConto(id){ const c = S.conti.find(x=>x.id===id); return c ? c.nome : id; }
+/* Piano conti: cosa spostare sui conti secondari e cosa deve restare sul conto principale */
+function pianoConti(c){
+  const sposta = [];
+  S.fisse.filter(f=>f.attiva && f.conto).forEach(f=>sposta.push({key:'f_'+f.id, conto:f.conto, importo:f.importo, motivo:f.nome, entro:dataFissa(f)}));
+  Object.entries(S.risparmio||{}).forEach(([k,v])=>{ if(+v>0) sposta.push({key:'r_'+k, conto:k, importo:+v, motivo:'Obiettivo risparmio'}); });
+  const daSpostare = sposta.filter(s=>!S.periodo.spostati?.[s.key]).reduce((t,s)=>t+s.importo,0);
+  // sul conto principale devono restare:
+  // le fisse già addebitate in questo periodo non devono più restare sul conto
+  const fisseDaPagare = S.fisse.filter(f=>f.attiva && !f.conto && !(S.periodo.pagate||{})[f.id] && dataFissa(f) >= c.oggi);
+  const fissePrincipale = fisseDaPagare.reduce((t,f)=>t+f.importo,0);
+  const accantonati = S.annuali.reduce((t,a)=>t+(a.accantonato||0)+quotaAnnuale(a),0);
+  const budgetResiduo = Math.max(0, c.disponibile - c.spesoTot);
+  return {sposta, daSpostare, fissePrincipale, fisseDaPagare, accantonati, budgetResiduo};
+}
+function toggleSpostato(key){
+  S.periodo.spostati = S.periodo.spostati||{};
+  S.periodo.spostati[key] = !S.periodo.spostati[key];
+  save(); render();
+}
+
+/* =====================================================================
+   PREVISIONI
+   ===================================================================== */
+function previsioneCarburante(){
+  const pieni = S.movimenti.filter(m=>m.cat==='Carburante' && m.tipo==='var').sort((a,b)=>a.ts-b.ts);
+  if(pieni.length < 2) return {n:pieni.length};
+  let intervalli=[];
+  for(let i=1;i<pieni.length;i++) intervalli.push((pieni[i].ts-pieni[i-1].ts)/DAY);
+  const recenti = intervalli.slice(-6);
+  const media = recenti.reduce((s,x)=>s+x,0)/recenti.length;
+  const importi = pieni.slice(-6).map(p=>p.importo);
+  const mediaImp = importi.reduce((s,x)=>s+x,0)/importi.length;
+  const prossimo = new Date(pieni[pieni.length-1].ts + media*DAY);
+  const mensile = mediaImp * (30/Math.max(1,media));
+  return {n:pieni.length, media, mediaImp, prossimo, mensile};
+}
+
+/* =====================================================================
+   MOVIMENTI: aggiunta, duplicati, classificazione
+   ===================================================================== */
+function indovinaCategoria(desc){
+  const d = ' '+(desc||'').toLowerCase()+' ';
+  for(const [cat,kws] of Object.entries(CAT_KEYWORDS)) if(kws.some(k=>d.includes(k))) return cat;
+  return 'Generale';
+}
+// riconosce se un pagamento corrisponde a una spesa fissa o annuale
+function riconosciFissa(desc){
+  const d = (desc||'').toLowerCase();
+  if(!d) return null;
+  for(const f of S.fisse){ if(f.parole && f.parole.split(',').some(p=>p.trim() && d.includes(p.trim().toLowerCase()))) return {tipo:'fissa', ref:f}; }
+  for(const a of S.annuali){ if(a.parole && a.parole.split(',').some(p=>p.trim() && d.includes(p.trim().toLowerCase()))) return {tipo:'annuale', ref:a}; }
+  return null;
+}
+function cercaDuplicato(importo, fonte, ts){
+  // stesso importo registrato da un'altra fonte automatica negli ultimi 4 giorni
+  // (la notifica della carta fisica a volte arriva in ritardo)
+  if(fonte==='contanti') return null;
+  return S.movimenti.find(m => Math.abs(m.importo-importo)<0.005 && m.fonte!=='contanti' && m.fonte!==fonte && Math.abs(m.ts-ts) < 4*DAY);
+}
+function aggiungiMovimento({importo, fonte='contanti', desc='', cat=null, tipo=null, ts=Date.now(), forza=false}){
+  importo = round2(Math.abs(importo));
+  if(!importo) return null;
+  if(!forza){
+    const dup = cercaDuplicato(importo, fonte, ts);
+    if(dup){
+      render();
+      toast(`Già registrata: ${fmt(importo)} ${dup.desc?'('+dup.desc+')':''}`, 'Aggiungi comunque', ()=>aggiungiMovimento({importo,fonte,desc,cat,tipo,ts,forza:true}));
+      return null;
+    }
+  }
+  let rif = null;
+  if(!tipo){
+    const r = riconosciFissa(desc);
+    if(r){ tipo = r.tipo; rif = r.ref.id; }
+    else tipo = 'var';
+  }
+  const m = { id:uid(), ts, importo, fonte, desc:desc.trim(), cat: cat || indovinaCategoria(desc), tipo, rif };
+  S.movimenti.push(m);
+  if(tipo==='annuale' && rif){ segnaAnnualePagata(rif, false); }
+  if(tipo==='fissa' && rif){ S.periodo.pagate=S.periodo.pagate||{}; S.periodo.pagate[rif]=true; }
+  if(tipo==='fissa' && rif){ const f=S.fisse.find(x=>x.id===rif); if(f && f.conto){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.spostati['f_'+f.id]=true; } }
+  save(); render();
+  const c = calcola();
+  if(tipo==='var') toast(`✓ ${fmt(importo)} — oggi ti restano ${fmt(c.residuoOggi)}`, 'Annulla', ()=>eliminaMovimento(m.id));
+  else toast(`✓ ${fmt(importo)} registrata come spesa ${tipo==='fissa'?'fissa':'annuale'} (non tocca il budget giornaliero)`, 'Annulla', ()=>eliminaMovimento(m.id));
+  return m;
+}
+function eliminaMovimento(id){ S.movimenti = S.movimenti.filter(m=>m.id!==id); save(); render(); }
+
+/* =====================================================================
+   STIPENDIO / NUOVO PERIODO
+   ===================================================================== */
+function nuovoStipendio(importo, dataStr){
+  dataStr = dataStr || isoDate(today());
+  if(dataStr === S.periodo.inizio){ S.periodo.stipendio = importo; save(); render(); toast('Stipendio aggiornato: '+fmt(importo)); return; }
+  // chiude il periodo attuale: accantona le quote annuali e salva lo storico
+  const c = calcola();
+  S.annuali.forEach(a=>{ a.accantonato = round2(Math.min(a.importo, (a.accantonato||0) + quotaAnnuale(a))); });
+  S.storicoPeriodi.push({ inizio:S.periodo.inizio, fine:isoDate(new Date(parseDate(dataStr)-DAY)), stipendio:c.stip, disponibile:round2(c.disponibile), speso:round2(c.spesoTot) });
+  S.periodo = { inizio:dataStr, stipendio:importo, spostati:{}, pagate:{} };
+  save(); render();
+  toast(`💶 Nuovo periodo iniziato! Stipendio ${fmt(importo)}`);
+}
+function segnaAnnualePagata(id, registra=true){
+  const a = S.annuali.find(x=>x.id===id); if(!a) return;
+  if(registra) S.movimenti.push({id:uid(), ts:Date.now(), importo:a.importo, fonte:'manuale', desc:a.nome, cat:'Altro', tipo:'annuale', rif:a.id});
+  a.accantonato = 0;
+  if(a.scadenza){ const s=parseDate(a.scadenza); s.setFullYear(s.getFullYear()+1); a.scadenza = isoDate(s); }
+  save(); render();
+}
+
+/* =====================================================================
+   RICONOSCIMENTO NOTIFICHE / SMS / VOCE
+   ===================================================================== */
+function estraiImporto(t){
+  // formati: 9,21 €   € 9,21   9,21 EUR   1.652,00 €   300,00 eur
+  const re = /(?:€|eur\b)\s*([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)|([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)\s*(?:€|eur\b|euro)/i;
+  const m = t.match(re);
+  if(!m) return null;
+  return numeroIt(m[1]||m[2]);
+}
+function numeroIt(s){
+  s = String(s).trim();
+  if(/,\d{1,2}$/.test(s)) s = s.replace(/\./g,'').replace(',','.');
+  else if(/\.\d{3}$/.test(s)) s = s.replace(/\./g,'');
+  return parseFloat(s);
+}
+/* Analizza il testo di una notifica o SMS. Ritorna {azione, importo, desc, fonte} */
+function analizzaNotifica(titolo, testo, fonteHint){
+  const t = ((titolo||'')+' \n '+(testo||'')).trim();
+  const tl = t.toLowerCase();
+  // da ignorare: codici OTP, autorizzazioni, saldo
+  if(/inserisci il codice|digita il codice|codice (di )?(sicurezza|conferma|otp)|\botp\b|saldo disponibile|abbiamo disattivato|bloccat/.test(tl)) return {azione:'ignora', motivo:'codice o avviso non di spesa'};
+  const importo = estraiImporto(t);
+  if(importo===null || isNaN(importo)){
+    // Inbank: "È stato addebitato un importo" + "PRE-ADDEBITO POS ITALIA D PIU CASSA 1 SPELLO" (senza cifra)
+    if(/emolument|stipendio/.test(tl)) return {azione:'stipendio', importo:null};
+    if(/addebit|pagamento|pos\b/.test(tl) && !/accredit/.test(tl)){
+      const negozio = (testo||titolo||'').replace(/pre-?addebito|addebito|pagamento|\bpos\b|\bitalia\b|maestro|mastercard|è stato addebitato un importo/ig,' ');
+      const desc = pulisciDesc(negozio);
+      const gia = pagamentoGiaRegistrato(desc);
+      if(gia) return {azione:'ignora', motivo:'già registrato da Wallet: '+gia.desc+' '+fmt(gia.importo)};
+      return {azione:'chiediImporto', desc, fonte:'carta'};
+    }
+    return {azione:'ignora', motivo:'nessun importo trovato'};
+  }
+  if(importo===0) return {azione:'ignora', motivo:'importo zero'};
+  // stipendio
+  if(/emolument|stipendio|accredito stip/.test(tl)) return {azione:'stipendio', importo};
+  // altre entrate
+  if(/(accredit|ricevut|incass|bonifico in entrata|rimbors)/.test(tl) && !/addebit|pagament|inviato/.test(tl)) { const da = t.match(/\bda\s+([A-Za-z][A-Za-z .']{1,30})/); return {azione:'entrata', importo, desc: da ? 'Da '+pulisciDesc(da[1]) : (titolo && !/inbank|banca|bcc/i.test(titolo) ? pulisciDesc(titolo) : 'Entrata')}; }
+  // bonifico in uscita (SMS Inbank: "inviato bon 300,00 eur a c/c **123 NOME")
+  const bon = t.match(/inviato\s+bon\w*\s+[0-9.,]+\s*eur\w*\s+a\s+(.+?)(?:\s+-\s+|$)/i);
+  if(bon || /bonifico/.test(tl)){
+    const da = t.match(/c\/c\s*\*+(\d+)\s+inviato/i);
+    const princ = String(S.impostazioni.contoPrincipale||'');
+    if(da && princ && !da[1].endsWith(princ) && !princ.endsWith(da[1])) return {azione:'ignora', motivo:'bonifico da un altro conto (**'+da[1]+')'};
+    const a = bon && bon[1].match(/c\/c\s*\*+(\d+)/i);
+    const verso = a ? S.conti.find(c=>numeriConto(c).some(n=>n.endsWith(a[1])||a[1].endsWith(n))) : null;
+    return {azione:'bonifico', importo, desc: verso ? 'Bonifico → '+verso.nome : bon? 'Bonifico a '+pulisciDesc(bon[1].replace(/c\/c\s*\*+\d+\s*/i,'')) : 'Bonifico', fonte:'bonifico', verso: verso?verso.id:null};
+  }
+  // pagamento con carta / wallet
+  let desc = '';
+  const eser = t.match(/eser\s+(.+?)\s+eser/i) || t.match(/presso\s+(.+?)(?:\s+con\b|[.,]|$)/i);
+  if(eser) desc = eser[1];
+  else if(titolo && !/wallet|inbank|banca|bcc|pagamento|notifica/i.test(titolo)) desc = titolo;
+  const carta = t.match(/(?:carta|card)[^\n]{0,40}?(?:••|•|\*{2,}|x{2,})\s?(\d{3,4})/i);
+  const mie = String(S.impostazioni.carte||'').split(/[,\s]+/).filter(Boolean);
+  const altro = S.conti.find(c=>numeriConto(c).some(n=>n.length>=4 && t.includes(n)));
+  if(altro || /prepagata/.test(tl)) return {azione:'ignora', motivo:'movimento di '+(altro?altro.nome:'carta prepagata')+' (non pesa sul budget)'};
+  if(carta && mie.length && !mie.some(d=>d.endsWith(carta[1])||carta[1].endsWith(d)))
+    return {azione:'ignora', motivo:'carta ••'+carta[1]+' di un altro conto (non pesa sul budget)'};
+  let fonte = fonteHint || (/wallet|smartphone/.test(tl) ? 'wallet' : 'carta');
+  return {azione:'spesa', importo, desc:pulisciDesc(desc), fonte};
+}
+// stesso negozio registrato da Wallet nelle ultime 6 ore? (es. "D Piu Cassa 1" dentro "D Piu Cassa 1 Spello")
+function normNome(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function pagamentoGiaRegistrato(desc){
+  const n = normNome(desc); if(n.length<3) return null;
+  return [...S.movimenti].reverse().find(m=> m.fonte==='wallet' && Date.now()-m.ts < 6*3600000 && normNome(m.desc).length>=3 && (n.includes(normNome(m.desc)) || normNome(m.desc).includes(n)));
+}
+function pulisciDesc(s){
+  return String(s||'').replace(/\s+/g,' ').replace(/[0-9]{6,}.*/,'').replace(/\b(s\.?p\.?a\.?|s\.?r\.?l\.?)\b/ig,'').trim().slice(0,40)
+    .toLowerCase().replace(/(^|\s)\S/g, c=>c.toUpperCase());
+}
+function eseguiNotifica(titolo, testo, fonteHint){
+  S.logNotifiche = (S.logNotifiche||[]).concat([{ts:Date.now(), titolo, testo, fonte:fonteHint||''}]).slice(-15);
+  S.periodo.spostati = S.periodo.spostati||{};
+  const r = analizzaNotifica(titolo, testo, fonteHint);
+  if(r.azione==='spesa') aggiungiMovimento({importo:r.importo, fonte:r.fonte, desc:r.desc});
+  else if(r.azione==='stipendio') chiediStipendio(r.importo);
+  else if(r.azione==='entrata'){ S.entrate.push({id:uid(), data:isoDate(today()), importo:r.importo, nota:r.desc||'Entrata'}); save(); render(); toast('＋ Entrata registrata: '+fmt(r.importo)); }
+  else if(r.azione==='bonifico'){
+    const f = S.fisse.find(x=>x.attiva && x.conto && (!r.verso || x.conto===r.verso) && Math.abs(x.importo-r.importo)<0.01 && !S.periodo.spostati?.['f_'+x.id]);
+    const rk = Object.keys(S.risparmio||{}).find(k=>(!r.verso || k===r.verso) && Math.abs((+S.risparmio[k]||0)-r.importo)<0.01 && !S.periodo.spostati?.['r_'+k]);
+    if(f) aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:f.nome+' → '+nomeConto(f.conto), tipo:'fissa', forza:true}) && (S.movimenti[S.movimenti.length-1].rif=f.id, S.periodo.spostati['f_'+f.id]=true, save(), render());
+    else if(rk){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.spostati['r_'+rk]=true; aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:'Risparmio → '+nomeConto(rk), tipo:'giro', forza:true}); }
+    else if(r.verso) aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:r.desc, tipo:'giro', forza:true});
+    else chiediBonifico(r.importo, r.desc);
+  }
+  else if(r.azione==='chiediImporto') chiediImporto(r.desc, r.fonte);
+  else toast('Notifica ignorata ('+r.motivo+')');
+  if(S.logNotifiche.length) S.logNotifiche[S.logNotifiche.length-1].esito = r.azione + (r.motivo?' – '+r.motivo:'') + (r.importo?' '+fmt(r.importo):'');
+  save(); render();
+  return r;
+}
+
+// Voce: "3,50" "3 e 50" "tre euro e cinquanta" "dodici"
+const NUMW = {zero:0,un:1,uno:1,una:1,due:2,tre:3,quattro:4,cinque:5,sei:6,sette:7,otto:8,nove:9,dieci:10,undici:11,dodici:12,tredici:13,quattordici:14,quindici:15,sedici:16,diciassette:17,diciotto:18,diciannove:19};
+const DECW = {venti:20,vent:20,trenta:30,trent:30,quaranta:40,quarant:40,cinquanta:50,cinquant:50,sessanta:60,sessant:60,settanta:70,settant:70,ottanta:80,ottant:80,novanta:90,novant:90};
+function parolaNumero(w){
+  w = w.toLowerCase().replace(/[àá]/g,'a').replace(/[èé]/g,'e').replace(/[ìí]/g,'i').replace(/[òó]/g,'o').replace(/[ùú]/g,'u');
+  if(w in NUMW) return NUMW[w];
+  let tot = 0;
+  const c = w.match(/^(.*?)cento(.*)$/);
+  if(c){ tot += (c[1] ? (NUMW[c[1]]||0) : 1)*100; w = c[2]; if(!w) return tot; }
+  for(const [k,v] of Object.entries(DECW).sort((a,b)=>b[0].length-a[0].length)){
+    if(w.startsWith(k)){ const r = w.slice(k.length); if(!r) return tot+v; if(r in NUMW) return tot+v+NUMW[r]; }
+  }
+  if(w in NUMW) return tot+NUMW[w];
+  return tot||null;
+}
+function importoDaVoce(txt){
+  let t = ' '+txt.toLowerCase()+' ';
+  t = t.replace(/(\d+)\s*,\s*(\d{1,2})/g,'$1.$2');
+  // converte parole numeriche in cifre
+  t = t.replace(/[a-zàèéìòù]+/g, w => { if(['e','euro','ed'].includes(w)) return w; const n=parolaNumero(w); return n===null? w : String(n); });
+  let m = t.match(/(\d+(?:\.\d{1,2})?)\s*(?:euro|€)?\s*(?:e|ed|virgola)\s*(\d{1,2})(?:\s*(?:centesimi|cent))?\b/);
+  if(m && !m[1].includes('.')) return round2(parseFloat(m[1]) + (m[2].length===1? +m[2]/10 : +m[2]/100));
+  m = t.match(/(\d+(?:\.\d{1,2})?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+/* =====================================================================
+   COMANDI DA LINK (MacroDroid, scorciatoie)
+   ===================================================================== */
+function gestisciURL(){
+  // i comandi possono arrivare dopo "#" (consigliato: non vengono inviati a nessun server) o dopo "?"
+  const p = new URLSearchParams(location.search);
+  new URLSearchParams(location.hash.replace(/^#/,'')).forEach((v,k)=>p.set(k,v));
+  if(![...p.keys()].length) return;
+  // evita di rieseguire lo stesso comando se la pagina viene ricaricata
+  const firma = location.search + location.hash;
+  const fatti = JSON.parse(sessionStorage.getItem('cmdFatti')||'[]');
+  history.replaceState(null,'',location.pathname);
+  if(fatti.includes(firma)) return;
+  fatti.push(firma); sessionStorage.setItem('cmdFatti', JSON.stringify(fatti.slice(-30)));
+
+  const fonte = p.get('fonte') || undefined;
+  if(p.has('notifica') || p.has('titolo')) { eseguiNotifica(p.get('titolo')||'', p.get('notifica')||'', fonte); return; }
+  if(p.has('add') || p.has('spesa')){
+    const v = numeroIt(p.get('add')||p.get('spesa'));
+    if(!isNaN(v)) aggiungiMovimento({importo:v, fonte:fonte||'contanti', desc:p.get('desc')||''});
+    return;
+  }
+  if(p.has('voce')){ const v = importoDaVoce(p.get('voce')); if(v) aggiungiMovimento({importo:v, fonte:'contanti', desc:''}); else toast('Non ho capito l\'importo: "'+p.get('voce')+'"'); return; }
+  if(p.has('stipendio')){ const v=numeroIt(p.get('stipendio')); if(!isNaN(v)) nuovoStipendio(v); return; }
+  const az = p.get('azione');
+  if(az==='voce') setTimeout(openVoce, 200);
+  if(az==='contanti') setTimeout(openAdd, 200);
+}
+
+/* =====================================================================
+   INTERFACCIA
+   ===================================================================== */
+let vista='oggi', filtroMov='periodo';
+const TITOLI = {oggi:'Oggi', mov:'Movimenti', fisse:'Spese fisse', imp:'Impostazioni'};
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
+  vista=b.dataset.v;
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on', v.id==='v-'+vista));
+  window.scrollTo(0,0); render();
+});
+document.querySelectorAll('#segMov button').forEach(b=>b.onclick=()=>{
+  filtroMov=b.dataset.f; document.querySelectorAll('#segMov button').forEach(x=>x.classList.toggle('on',x===b)); render();
+});
+
+const FONTE_ICO = {wallet:'📱', carta:'💳', contanti:'💵', bonifico:'🏦', manuale:'✍️'};
+function rigaMov(m){
+  const d = new Date(m.ts);
+  const tag = m.tipo==='fissa' ? '<span class="tag y">fissa</span>' : m.tipo==='annuale' ? '<span class="tag y">annuale</span>' : m.tipo==='giro' ? '<span class="tag">esclusa</span>' : `<span class="tag">${esc(m.cat)}</span>`;
+  return `<div class="row" onclick="editMov('${m.id}')"><div class="grow"><div class="t">${FONTE_ICO[m.fonte]||''} ${esc(m.desc||(m.fonte==='contanti'?'Contanti':'Spesa'))}</div><div class="s">${tag}${fDateLong(d)} · ${fTime(m.ts)}</div></div><div class="amt">−${fmt(m.importo)}</div></div>`;
+}
+
+function render(){
+  const c = calcola();
+  document.getElementById('hTitle').textContent = TITOLI[vista];
+  document.getElementById('hSub').textContent = vista==='oggi' ? fDateLong(c.oggi) : '';
+
+  // ---- OGGI
+  const r = document.getElementById('residuoOggi');
+  r.textContent = fmt(c.residuoOggi);
+  r.className = 'big ' + (c.residuoOggi < 0 ? 'bad' : c.residuoOggi < c.budgetOggi*0.25 ? 'warn' : 'ok');
+  document.getElementById('budgetOggiTxt').textContent = `Budget di oggi ${fmt(c.budgetOggi)} · speso ${fmt(c.spesoOggi)}`;
+  const perc = c.budgetOggi>0 ? Math.min(100, Math.max(0, c.spesoOggi/c.budgetOggi*100)) : 100;
+  const bar = document.getElementById('barOggi');
+  bar.style.width = perc+'%';
+  bar.style.background = perc>=100 ? 'var(--bad)' : perc>75 ? 'var(--warn)' : 'var(--accent)';
+
+  document.getElementById('sDisp').textContent = fmt0(c.disponibile);
+  document.getElementById('sSpeso').textContent = fmt0(c.spesoTot);
+  document.getElementById('sGiorni').textContent = c.ritardo ? 'Stip. in ritardo' : c.giorniRim;
+  const pr = document.getElementById('sProiez');
+  pr.textContent = (c.proiezione>=0?'+':'')+fmt0(c.proiezione);
+  pr.className = 'v ' + (c.proiezione>=0?'ok':'bad');
+  document.getElementById('periodoTxt').innerHTML =
+    `Dal ${fDate(c.inizio)} al ${fDate(c.fine)}. Stipendio ${fmt(c.stip)}${c.entrate?` + entrate extra ${fmt(c.entrate)}`:''} − fisse ${fmt(c.fisse)} − accantonamenti ${fmt(c.quote)}${c.risparmio?` − risparmio da spostare ${fmt(c.risparmio)}`:''}.<br>` +
+    `"Risparmio previsto" = quanto ti avanza a fine periodo se continui a spendere ${fmt(c.mediaGiorno)} al giorno come finora (in aggiunta a PAC e obiettivo).`;
+
+  // piano conti
+  const pc = pianoConti(c);
+  document.getElementById('pianoSposta').innerHTML = (pc.sposta.length ? pc.sposta.map(x=>{
+    const fatto = S.periodo.spostati?.[x.key];
+    return `<div class="row" onclick="toggleSpostato('${x.key}')"><div class="grow"><div class="t" style="${fatto?'opacity:.5;text-decoration:line-through':''}">${fatto?'✅':'⬜'} ${esc(nomeConto(x.conto))}</div><div class="s">${esc(x.motivo)}${fatto?' · fatto':(x.entro?' · entro il '+fDate(x.entro):'')+' · tocca quando l\'hai spostato'}</div></div><div class="amt">${fmt(x.importo)}</div></div>`;}).join('') : '<div class="empty">Niente da spostare. Imposta l\'obiettivo di risparmio in Impostazioni.</div>')
+    + (pc.daSpostare>0 ? `<div class="row"><div class="grow"><b>Ancora da spostare</b></div><div class="amt warn">${fmt(pc.daSpostare)}</div></div>` : '');
+  document.getElementById('pianoResta').innerHTML =
+    `<div class="row"><div class="grow"><div class="t">Spese fisse ancora da addebitare</div><div class="s">${pc.fisseDaPagare.map(f=>esc(f.nome)+' il '+fDate(dataFissa(f))).join(', ')||'Tutte già addebitate'}</div></div><div class="amt">${fmt(pc.fissePrincipale)}</div></div>
+     <div class="row"><div class="grow"><div class="t">Riserva scadenze</div><div class="s">Bollo, assicurazione… (già accantonato + quota di questo mese)</div></div><div class="amt">${fmt(pc.accantonati)}</div></div>
+     <div class="row"><div class="grow"><div class="t">Budget spese rimasto</div><div class="s">Fino al ${fDate(c.fine)}</div></div><div class="amt">${fmt(pc.budgetResiduo)}</div></div>
+     <div class="row"><div class="grow"><b>Totale minimo sul conto</b><div class="s">Se sul conto hai di più, la differenza è margine extra</div></div><div class="amt ok">${fmt(pc.fissePrincipale+pc.accantonati+pc.budgetResiduo)}</div></div>`;
+
+  // previsioni
+  let prev = '';
+  const carb = previsioneCarburante();
+  if(carb.n>=2){
+    const gg = daysBetween(c.oggi, carb.prossimo);
+    prev += `<div class="row"><div class="grow"><div class="t">⛽ Prossimo rifornimento</div><div class="s">${gg<=0?'Probabilmente a breve':'Tra circa '+gg+' giorni ('+fDate(carb.prossimo)+')'} · ogni ~${Math.round(carb.media)} gg · ~${fmt0(carb.mensile)}/mese</div></div><div class="amt">~${fmt0(carb.mediaImp)}</div></div>`;
+  } else {
+    prev += `<div class="row"><div class="grow"><div class="t">⛽ Carburante</div><div class="s">La stima parte dopo 2 rifornimenti registrati (${carb.n||0}/2)</div></div></div>`;
+  }
+  [...S.annuali].sort((a,b)=>(a.scadenza||'9999').localeCompare(b.scadenza||'9999')).forEach(a=>{
+    const q = quotaAnnuale(a);
+    const gg = a.scadenza ? daysBetween(c.oggi, parseDate(a.scadenza)) : null;
+    prev += `<div class="row"><div class="grow"><div class="t">📅 ${esc(a.nome)}${a.nota?` <span class="tag">${esc(a.nota)}</span>`:''}</div><div class="s">${a.scadenza? (gg<0?'Scaduta il ':'Scade il ')+parseDate(a.scadenza).toLocaleDateString('it-IT')+(gg>=0?` (tra ${gg} gg)`:'') : '<span class="warn">Inserisci la data di scadenza</span>'} · accantonati ${fmt(a.accantonato||0)} · quota ${fmt(q)}/mese</div></div><div class="amt">${fmt(a.importo)}</div></div>`;
+  });
+  document.getElementById('prevList').innerHTML = prev;
+
+  const ult = [...S.movimenti].sort((a,b)=>b.ts-a.ts).slice(0,6);
+  document.getElementById('ultimi').innerHTML = ult.length ? ult.map(rigaMov).join('') : '<div class="empty">Nessuna spesa registrata. Tocca "＋ Spesa" per iniziare.</div>';
+
+  // ---- MOVIMENTI
+  let lista = [...S.movimenti].sort((a,b)=>b.ts-a.ts);
+  if(filtroMov==='periodo') lista = lista.filter(m=>inPeriodo(m.ts));
+  const perCat = {};
+  lista.filter(m=>m.tipo==='var').forEach(m=>perCat[m.cat]=(perCat[m.cat]||0)+m.importo);
+  const totVar = Object.values(perCat).reduce((s,x)=>s+x,0);
+  document.getElementById('movRiepilogo').innerHTML = `<h2>Spese giornaliere per categoria</h2>` + (totVar ? Object.entries(perCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+    `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${esc(k)}</span><b>${fmt(v)}</b></div><div class="bar" style="margin:5px 0 0;height:6px"><div style="width:${v/totVar*100}%"></div></div></div>`).join('') : '<div class="empty">Ancora nessuna spesa</div>');
+  let html='', giorno='';
+  lista.forEach(m=>{
+    const g = dayStart(m.ts).toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+    if(g!==giorno){
+      const totG = lista.filter(x=>x.tipo==='var' && dayStart(x.ts).getTime()===dayStart(m.ts).getTime()).reduce((s,x)=>s+x.importo,0);
+      html += `<div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin:${giorno?16:0}px 0 2px;text-transform:capitalize"><span>${g}</span><span>${fmt(totG)}</span></div>`; giorno=g;
+    }
+    html += rigaMov(m);
+  });
+  document.getElementById('movList').innerHTML = html || '<div class="empty">Nessun movimento</div>';
+
+  // ---- FISSE
+  document.getElementById('fisseList').innerHTML = S.fisse.length ? S.fisse.map(f=>
+    `<div class="row" onclick="editFissa('${f.id}')"><div class="grow"><div class="t" style="${f.attiva?'':'opacity:.5'}">${esc(f.nome)}</div><div class="s">${f.attiva?'Attiva':'In pausa'} · ${testoGiorno(f.giorno)}${f.conto?' · → '+esc(nomeConto(f.conto)):''}${f.attiva? ((f.conto?S.periodo.spostati?.['f_'+f.id]:(S.periodo.pagate||{})[f.id]||dataFissa(f)<today()) ? ' · ✅ fatta' : ' · prossima '+fDate(dataFissa(f))) : ''}</div></div><div class="amt">${fmt(f.importo)}</div></div>`).join('')
+    + `<div class="row"><div class="grow"><b>Totale mensile</b></div><div class="amt">${fmt(c.fisse)}</div></div>` : '<div class="empty">Nessuna spesa fissa</div>';
+  document.getElementById('annualiList').innerHTML = S.annuali.length ? S.annuali.map(a=>{
+    const p = Math.min(100,(a.accantonato||0)/a.importo*100);
+    return `<div class="row" onclick="editAnnuale('${a.id}')" style="display:block"><div style="display:flex;justify-content:space-between"><div class="t">${esc(a.nome)}</div><div class="amt">${fmt(a.importo)}</div></div><div class="s">${a.scadenza?'Scadenza '+parseDate(a.scadenza).toLocaleDateString('it-IT'):'<span class="warn">Data di scadenza mancante</span>'} · quota ${fmt(quotaAnnuale(a))}/mese</div><div class="bar" style="margin:8px 0 0;height:6px"><div style="width:${p}%"></div></div><div class="s">Accantonati ${fmt(a.accantonato||0)}</div></div>`;}).join('') : '<div class="empty">Nessuna scadenza</div>';
+  const entrateP = [...S.entrate].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,10);
+  document.getElementById('entrateList').innerHTML = entrateP.length ? entrateP.map(e=>
+    `<div class="row" onclick="editEntrata('${e.id}')"><div class="grow"><div class="t">${esc(e.nota||'Entrata')}</div><div class="s">${parseDate(e.data).toLocaleDateString('it-IT')}${parseDate(e.data)>=c.inizio?' · in questo periodo':''}</div></div><div class="amt ok">+${fmt(e.importo)}</div></div>`).join('') : '<div class="empty">Nessuna entrata extra</div>';
+
+  document.getElementById('contiList').innerHTML = S.conti.map(k=>`<div class="row" onclick="editConto('${k.id}')"><div class="grow"><div class="t">${esc(k.nome)}</div><div class="s">${esc(k.uso||'')}${k.numero?' · n. '+esc(k.numero):''}</div></div><div class="amt">›</div></div>`).join('');
+  document.getElementById('logNotif').innerHTML = (S.logNotifiche||[]).slice().reverse().map(l=>`<div class="row" style="display:block"><div class="s">${new Date(l.ts).toLocaleString('it-IT')} ${l.fonte?'· '+esc(l.fonte):''}</div><div style="font-size:13.5px">${esc(l.titolo)} — ${esc(l.testo)}</div><div class="s ok">→ ${esc(l.esito||'')}</div></div>`).join('') || '<div class="empty">Ancora nessuna</div>';
+  // ---- IMPOSTAZIONI
+  if(vista==='imp' && document.activeElement?.tagName!=='INPUT'){
+    document.getElementById('iStip').value = S.impostazioni.stipendio;
+    document.getElementById('iRispConti').innerHTML = S.conti.map(k=>
+      `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="flex:1">${esc(k.nome)} <span class="muted">(${esc(k.uso)})</span></span><input style="width:110px" type="number" inputmode="decimal" data-conto="${k.id}" value="${+(S.risparmio||{})[k.id]||0}"></div>`).join('');
+    document.getElementById('iCarte').value = S.impostazioni.carte||'';
+    document.getElementById('iPrinc').value = S.impostazioni.contoPrincipale||'';
+    document.getElementById('iFine').value = S.impostazioni.giornoFine;
+  }
+  const base = location.origin + location.pathname;
+  document.getElementById('lnkNotif').textContent = base+'#fonte=wallet&titolo=[titolo]&notifica=[testo]';
+  document.getElementById('lnkAdd').textContent = base+'#add=3.50&fonte=contanti';
+  document.getElementById('lnkVoce').textContent = base+'#voce=[testo dettato]';
+}
+
+/* ---------------- fogli (sheet) ---------------- */
+function openSheet(html){ document.getElementById('sheet').innerHTML = html; document.getElementById('sheetBg').classList.add('on'); }
+function closeSheet(){ document.getElementById('sheetBg').classList.remove('on'); stopVoce(); }
+
+let addCat = 'Generale', addFonte = 'contanti';
+function openAdd(){
+  addCat='Generale'; addFonte='contanti';
+  openSheet(`<h3>Nuova spesa</h3>
+    <input class="amount-input" id="aImp" type="text" inputmode="decimal" placeholder="0,00 €" autocomplete="off">
+    <label>Descrizione (facoltativa)</label><input id="aDesc" placeholder="es. caffè, benzina…" oninput="autoCat(this.value)">
+    <label>Pagata con</label><div class="chips" id="aFonti">${['contanti','carta','wallet'].map(f=>`<button class="chip ${f===addFonte?'on':''}" data-f="${f}">${FONTE_ICO[f]} ${f}</button>`).join('')}</div>
+    <label>Categoria</label><div class="chips" id="aCats">${CATEGORIE.map(k=>`<button class="chip ${k===addCat?'on':''}" data-c="${k}">${k}</button>`).join('')}</div>
+    <button class="btn" style="width:100%;margin-top:18px" onclick="salvaAdd()">Registra</button>`);
+  wireChips();
+  setTimeout(()=>document.getElementById('aImp').focus(),100);
+}
+function wireChips(){
+  document.querySelectorAll('#aCats .chip').forEach(b=>b.onclick=()=>{addCat=b.dataset.c;document.querySelectorAll('#aCats .chip').forEach(x=>x.classList.toggle('on',x===b));});
+  document.querySelectorAll('#aFonti .chip').forEach(b=>b.onclick=()=>{addFonte=b.dataset.f;document.querySelectorAll('#aFonti .chip').forEach(x=>x.classList.toggle('on',x===b));});
+}
+function autoCat(v){ const c = indovinaCategoria(v); if(c!=='Generale'){ addCat=c; document.querySelectorAll('#aCats .chip').forEach(x=>x.classList.toggle('on',x.dataset.c===c)); } }
+function salvaAdd(){
+  const v = numeroIt(document.getElementById('aImp').value.replace('€',''));
+  if(!v || isNaN(v)){ toast('Inserisci un importo'); return; }
+  closeSheet();
+  aggiungiMovimento({importo:v, fonte:addFonte, desc:document.getElementById('aDesc').value, cat:addCat, forza:addFonte==='contanti'});
+}
+
+function editMov(id){
+  const m = S.movimenti.find(x=>x.id===id); if(!m) return;
+  addCat = m.cat;
+  const dt = new Date(m.ts); const dtStr = isoDate(dt)+'T'+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+  openSheet(`<h3>Modifica movimento</h3>
+    <label>Importo</label><input id="eImp" type="text" inputmode="decimal" value="${String(m.importo).replace('.',',')}">
+    <label>Descrizione</label><input id="eDesc" value="${esc(m.desc)}">
+    <label>Data e ora</label><input id="eTs" type="datetime-local" value="${dtStr}">
+    <label>Tipo</label><select id="eTipo">
+      <option value="var" ${m.tipo==='var'?'selected':''}>Spesa giornaliera (conta nel budget)</option>
+      <option value="fissa" ${m.tipo==='fissa'?'selected':''}>Spesa fissa (già considerata)</option>
+      <option value="annuale" ${m.tipo==='annuale'?'selected':''}>Scadenza annuale (già accantonata)</option>
+      <option value="giro" ${m.tipo==='giro'?'selected':''}>Esclusa (giroconto, risparmio…)</option></select>
+    <label>Categoria</label><div class="chips" id="aCats">${CATEGORIE.map(k=>`<button class="chip ${k===addCat?'on':''}" data-c="${k}">${k}</button>`).join('')}</div>
+    <div class="grid2" style="margin-top:18px"><button class="btn danger" onclick="eliminaMovimento('${id}');closeSheet()">Elimina</button><button class="btn" onclick="salvaMov('${id}')">Salva</button></div>`);
+  wireChips();
+}
+function salvaMov(id){
+  const m = S.movimenti.find(x=>x.id===id);
+  const v = numeroIt(document.getElementById('eImp').value); if(!isNaN(v)&&v>0) m.importo = round2(v);
+  m.desc = document.getElementById('eDesc').value.trim();
+  const ts = new Date(document.getElementById('eTs').value).getTime(); if(!isNaN(ts)) m.ts = ts;
+  m.tipo = document.getElementById('eTipo').value; m.cat = addCat;
+  save(); closeSheet(); render();
+}
+
+function editFissa(id){
+  const f = S.fisse.find(x=>x.id===id) || {nome:'',importo:'',giorno:1,attiva:true,parole:''};
+  openSheet(`<h3>${id?'Modifica':'Nuova'} spesa fissa</h3>
+    <label>Nome</label><input id="fNome" value="${esc(f.nome)}" placeholder="es. Mutuo, Luce, Internet">
+    <label>Importo mensile (€)</label><input id="fImp" type="text" inputmode="decimal" value="${String(f.importo).replace('.',',')}">
+    <label>Giorno del mese (31 = ultimo giorno del mese)</label><input id="fGiorno" type="number" min="1" max="31" value="${f.giorno}">
+    ${id && f.attiva ? `<label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="fFatta" style="width:auto" ${(f.conto?S.periodo.spostati?.['f_'+f.id]:(S.periodo.pagate||{})[f.id])?'checked':''}> Già ${f.conto?'spostata':'pagata'} in questo periodo</label>`:''}
+    <label>Parole per riconoscerla nelle notifiche (separate da virgola)</label><input id="fParole" value="${esc(f.parole)}" placeholder="es. enel, servizio elettrico">
+    <label>È un trasferimento verso un tuo conto?</label><select id="fConto"><option value="">No, viene pagata dal conto principale</option>${S.conti.map(k=>`<option value="${k.id}" ${f.conto===k.id?'selected':''}>Sì, verso ${esc(k.nome)}</option>`).join('')}</select>
+    <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="fAtt" style="width:auto" ${f.attiva?'checked':''}> Attiva (togli la spunta quando finisci di pagarla)</label>
+    <div class="grid2" style="margin-top:18px">${id?`<button class="btn danger" onclick="S.fisse=S.fisse.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaFissa('${id||''}')">Salva</button></div>`);
+}
+function salvaFissa(id){
+  const v = numeroIt(document.getElementById('fImp').value), nome=document.getElementById('fNome').value.trim();
+  if(!nome || isNaN(v)){ toast('Inserisci nome e importo'); return; }
+  const dati = {nome, importo:round2(v), giorno:+document.getElementById('fGiorno').value||1, parole:document.getElementById('fParole').value.trim(), conto:document.getElementById('fConto').value, attiva:document.getElementById('fAtt').checked};
+  if(id) Object.assign(S.fisse.find(x=>x.id===id), dati); else S.fisse.push({id:uid(), ...dati});
+  const ff = document.getElementById('fFatta');
+  if(ff && id){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.pagate=S.periodo.pagate||{};
+    if(dati.conto) S.periodo.spostati['f_'+id]=ff.checked; else S.periodo.pagate[id]=ff.checked; }
+  save(); closeSheet(); render();
+}
+
+function editAnnuale(id){
+  const a = S.annuali.find(x=>x.id===id) || {nome:'',importo:'',scadenza:'',accantonato:0,parole:''};
+  openSheet(`<h3>${id?'Modifica':'Nuova'} scadenza annuale</h3>
+    <label>Nome</label><input id="nNome" value="${esc(a.nome)}" placeholder="es. Bollo, Assicurazione, Revisione">
+    <label>Importo (€)</label><input id="nImp" type="text" inputmode="decimal" value="${String(a.importo).replace('.',',')}">
+    <label>Prossima scadenza</label><input id="nScad" type="date" value="${a.scadenza}">
+    <label>Già messo da parte (€)</label><input id="nAcc" type="text" inputmode="decimal" value="${String(a.accantonato||0).replace('.',',')}">
+    <label>Parole per riconoscerla nelle notifiche</label><input id="nParole" value="${esc(a.parole)}">
+    ${id?`<button class="btn sec" style="width:100%;margin-top:16px" onclick="segnaAnnualePagata('${id}');closeSheet();toast('Pagata! Scadenza spostata di un anno')">✓ L'ho pagata</button>`:''}
+    <div class="grid2" style="margin-top:10px">${id?`<button class="btn danger" onclick="S.annuali=S.annuali.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaAnnuale('${id||''}')">Salva</button></div>`);
+}
+function salvaAnnuale(id){
+  const v = numeroIt(document.getElementById('nImp').value), nome=document.getElementById('nNome').value.trim();
+  if(!nome || isNaN(v)){ toast('Inserisci nome e importo'); return; }
+  const acc = numeroIt(document.getElementById('nAcc').value||'0');
+  const dati = {nome, importo:round2(v), scadenza:document.getElementById('nScad').value, accantonato:isNaN(acc)?0:round2(acc), parole:document.getElementById('nParole').value.trim()};
+  if(id) Object.assign(S.annuali.find(x=>x.id===id), dati); else S.annuali.push({id:uid(), ...dati});
+  save(); closeSheet(); render();
+}
+
+function editEntrata(id){
+  const e = S.entrate.find(x=>x.id===id) || {data:isoDate(today()), importo:'', nota:''};
+  openSheet(`<h3>${id?'Modifica':'Nuova'} entrata extra</h3>
+    <label>Importo (€)</label><input id="xImp" type="text" inputmode="decimal" value="${String(e.importo).replace('.',',')}">
+    <label>Descrizione</label><input id="xNota" value="${esc(e.nota)}" placeholder="es. Trasferta, lavoro extra">
+    <label>Data</label><input id="xData" type="date" value="${e.data}">
+    <div class="grid2" style="margin-top:18px">${id?`<button class="btn danger" onclick="S.entrate=S.entrate.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaEntrata('${id||''}')">Salva</button></div>`);
+}
+function salvaEntrata(id){
+  const v = numeroIt(document.getElementById('xImp').value);
+  if(isNaN(v)||!v){ toast('Inserisci un importo'); return; }
+  const dati = {importo:round2(v), nota:document.getElementById('xNota').value.trim(), data:document.getElementById('xData').value||isoDate(today())};
+  if(id) Object.assign(S.entrate.find(x=>x.id===id), dati); else S.entrate.push({id:uid(), ...dati});
+  save(); closeSheet(); render();
+}
+
+function openStipendio(importo){
+  importo = importo || null;
+  openSheet(`<h3>💶 È arrivato lo stipendio?</h3>
+    <p class="muted">Inizia un nuovo periodo: le quote per le scadenze annuali vengono messe da parte e il budget giornaliero si ricalcola fino al ${S.impostazioni.giornoFine} del mese prossimo.</p>
+    <label>Importo accreditato (€)</label><input id="sImp" type="text" inputmode="decimal" value="${String(importo||S.impostazioni.stipendio).replace('.',',')}">
+    <label>Data accredito</label><input id="sData" type="date" value="${isoDate(today())}">
+    <button class="btn" style="width:100%;margin-top:18px" onclick="confermaStipendio()">Inizia nuovo periodo</button>
+    <p class="muted" style="margin-top:14px">Periodo attuale iniziato il ${parseDate(S.periodo.inizio).toLocaleDateString('it-IT')} (${fmt(S.periodo.stipendio)}).</p>`);
+}
+function chiediStipendio(importo){ openStipendio(importo); }
+function chiediImporto(desc, fonte){
+  openSheet(`<h3>💳 Pagamento con carta</h3>
+    <p class="muted">${esc(desc||'Negozio sconosciuto')}<br>La banca non comunica l'importo: quanto hai speso?</p>
+    <input class="amount-input" id="qImp" type="text" inputmode="decimal" placeholder="0,00 €" autocomplete="off">
+    <div class="grid2" style="margin-top:16px"><button class="btn sec" onclick="closeSheet()">Ignora</button>
+    <button class="btn" onclick="const v=numeroIt(document.getElementById('qImp').value.replace('€',''));if(!v||isNaN(v)){toast('Inserisci un importo');return;}closeSheet();aggiungiMovimento({importo:v,fonte:'${fonte}',desc:'${esc(desc).replace(/'/g,"\\'")}'})">Registra</button></div>`);
+  setTimeout(()=>document.getElementById('qImp')?.focus(),150);
+}
+function confermaStipendio(){
+  const v = numeroIt(document.getElementById('sImp').value);
+  if(isNaN(v)||!v){ toast('Inserisci un importo'); return; }
+  const d = document.getElementById('sData').value || isoDate(today());
+  closeSheet(); nuovoStipendio(round2(v), d);
+}
+function chiediBonifico(importo, desc){
+  openSheet(`<h3>🏦 Bonifico di ${fmt(importo)}</h3>
+    <p class="muted">${esc(desc)}</p><p>Come lo considero?</p>
+    <button class="btn" style="width:100%;margin-top:6px" onclick="closeSheet();aggiungiMovimento({importo:${importo},fonte:'bonifico',desc:'${esc(desc).replace(/'/g,"\\'")}',tipo:'var'})">Spesa (conta nel budget)</button>
+    <button class="btn sec" style="width:100%;margin-top:10px" onclick="closeSheet();aggiungiMovimento({importo:${importo},fonte:'bonifico',desc:'${esc(desc).replace(/'/g,"\\'")}',tipo:'fissa'})">Spesa fissa già prevista</button>
+    <button class="btn sec" style="width:100%;margin-top:10px" onclick="closeSheet();aggiungiMovimento({importo:${importo},fonte:'bonifico',desc:'${esc(desc).replace(/'/g,"\\'")}',tipo:'giro'})">Spostamento su un mio conto (escludi)</button>`);
+}
+
+/* ---------------- voce ---------------- */
+let rec = null;
+function openVoce(){
+  openSheet(`<h3>Detta la spesa</h3><p class="muted">Tocca il microfono e di' l'importo, per esempio "3 euro e 50". Viene registrata come contanti.</p>
+    <button class="mic" id="micBtn" onclick="startVoce()"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#06261c" stroke-width="2.2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <p id="voceOut" style="text-align:center;font-size:20px;min-height:28px"></p>`);
+  startVoce();
+}
+function startVoce(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const out = document.getElementById('voceOut');
+  if(!SR){ out.innerHTML = '<span class="muted">Il riconoscimento vocale non è disponibile in questo browser. Usa "＋ Spesa".</span>'; return; }
+  stopVoce();
+  rec = new SR(); rec.lang='it-IT'; rec.interimResults=true; rec.maxAlternatives=3;
+  const mic = document.getElementById('micBtn'); mic && mic.classList.add('rec');
+  out.textContent = 'Ti ascolto…';
+  rec.onresult = ev=>{
+    const res = ev.results[ev.results.length-1];
+    out.textContent = res[0].transcript;
+    if(res.isFinal){
+      let v=null; for(let i=0;i<res.length && v===null;i++) v = importoDaVoce(res[i].transcript);
+      if(v){ closeSheet(); aggiungiMovimento({importo:v, fonte:'contanti', desc:'', forza:true}); }
+      else out.innerHTML = `Non ho capito l'importo 🤔<br><span class="muted">Riprova toccando il microfono</span>`;
+    }
+  };
+  rec.onerror = e=>{ out.innerHTML = '<span class="muted">'+(e.error==='not-allowed'?'Consenti l\'uso del microfono a Chrome':'Errore: '+e.error)+'</span>'; };
+  rec.onend = ()=>{ mic && mic.classList.remove('rec'); };
+  try{ rec.start(); }catch(e){}
+}
+function stopVoce(){ if(rec){ try{rec.abort();}catch(e){} rec=null; } }
+
+/* ---------------- impostazioni / backup ---------------- */
+function editConto(id){
+  const k = S.conti.find(x=>x.id===id) || {nome:'',uso:'',numero:''};
+  openSheet(`<h3>${id?'Modifica':'Nuovo'} conto</h3>
+    <label>Nome</label><input id="kNome" value="${esc(k.nome)}" placeholder="es. Revolut">
+    <label>A cosa serve</label><input id="kUso" value="${esc(k.uso)}" placeholder="es. Vacanze">
+    <label>Numeri di conto o carte (ultime cifre, separate da virgola)</label><input id="kNum" value="${esc(k.numero||'')}" placeholder="es. 123 oppure 4567, 890">
+    <div class="grid2" style="margin-top:18px">${id?`<button class="btn danger" onclick="S.conti=S.conti.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaConto('${id||''}')">Salva</button></div>`);
+}
+function salvaConto(id){
+  const nome = document.getElementById('kNome').value.trim(); if(!nome){ toast('Inserisci un nome'); return; }
+  const dati = {nome, uso:document.getElementById('kUso').value.trim(), numero:document.getElementById('kNum').value.trim()};
+  if(id) Object.assign(S.conti.find(x=>x.id===id), dati); else S.conti.push({id:uid(), ...dati});
+  save(); closeSheet(); render();
+}
+function salvaImpostazioni(){
+  const st = numeroIt(document.getElementById('iStip').value), gf = parseInt(document.getElementById('iFine').value);
+  if(!isNaN(st)) S.impostazioni.stipendio = st;
+  S.risparmio = {};
+  document.querySelectorAll('#iRispConti input').forEach(i=>{ const v=parseFloat(i.value); if(v>0) S.risparmio[i.dataset.conto]=round2(v); });
+  S.impostazioni.carte = document.getElementById('iCarte').value.trim();
+  S.impostazioni.contoPrincipale = document.getElementById('iPrinc').value.trim();
+  if(gf>=1 && gf<=28) S.impostazioni.giornoFine = gf;
+  save(); render(); toast('Impostazioni salvate');
+}
+function esporta(){
+  const blob = new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'finanze-backup-'+isoDate(today())+'.json'; a.click();
+}
+function importa(inp){
+  const f = inp.files[0]; if(!f) return;
+  f.text().then(t=>{ const d = JSON.parse(t); if(!d.movimenti) throw 0; S = Object.assign(defaultState(), d); save(); render(); toast('Backup ripristinato'); }).catch(()=>toast('File non valido'));
+  inp.value='';
+}
+function resetTutto(){
+  openSheet(`<h3>Cancellare tutto?</h3><p class="muted">Movimenti, spese fisse e impostazioni verranno eliminati da questo telefono. Fai prima un backup se vuoi conservarli.</p>
+  <div class="grid2" style="margin-top:16px"><button class="btn sec" onclick="closeSheet()">Annulla</button><button class="btn danger" onclick="localStorage.removeItem(KEY);S=defaultState();save();closeSheet();render()">Cancella</button></div>`);
+}
+function testNotifica(){
+  const r = analizzaNotifica('', document.getElementById('iTestNotif').value);
+  const out = document.getElementById('testOut');
+  out.innerHTML = r.azione==='ignora' ? 'Ignorata: '+esc(r.motivo) :
+    `Azione: <b>${r.azione}</b> · importo <b>${fmt(r.importo)}</b>${r.desc?' · '+esc(r.desc):''}${r.fonte?' · fonte '+r.fonte:''}`;
+}
+
+/* ---------------- toast ---------------- */
+let toastTimer;
+function toast(msg, btnTxt, btnFn){
+  const t = document.getElementById('toast'), b = document.getElementById('toastBtn');
+  document.getElementById('toastTxt').textContent = msg;
+  if(btnTxt){ b.style.display=''; b.textContent=btnTxt; b.onclick=()=>{ t.classList.remove('on'); btnFn(); }; } else b.style.display='none';
+  t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('on'), btnTxt?6000:3500);
+}
+
+/* ---------------- primo avvio ---------------- */
+function primoAvvio(){
+  if(S.setupFatto) return;
+  openSheet(`<h3>Benvenuto 👋</h3>
+    <p class="muted">Inserisci lo stipendio per partire. Spese fisse, scadenze annuali e conti li aggiungi poi nelle sezioni "Fisse" e "Impostazioni". I dati restano solo su questo telefono.</p>
+    <label>Stipendio fisso mensile (€)</label><input id="pFisso" type="text" inputmode="decimal" placeholder="es. 1500">
+    <label>Data dell'ultimo stipendio</label><input id="pData" type="date" value="${S.periodo.inizio}">
+    <label>Importo dell'ultimo stipendio (€)</label><input id="pImp" type="text" inputmode="decimal" value="${S.periodo.stipendio?String(S.periodo.stipendio).replace('.',','):''}">
+    <label>Quanto hai già speso dall'ultimo stipendio, esclusi i fissi (circa)</label><input id="pSpeso" type="text" inputmode="decimal" placeholder="es. 600">
+    <p class="muted">Serve per calcolare subito un budget giornaliero realistico per i giorni che restano.</p>
+    <button class="btn" style="width:100%;margin-top:10px" onclick="fineSetup()">Inizia</button>`);
+}
+function fineSetup(){
+  const d = document.getElementById('pData').value, v = numeroIt(document.getElementById('pImp').value), sp = numeroIt(document.getElementById('pSpeso').value||'0');
+  if(d) S.periodo.inizio = d;
+  const fx = numeroIt(document.getElementById('pFisso').value||'');
+  if(!isNaN(fx)&&fx) S.impostazioni.stipendio = fx;
+  if(!isNaN(v)&&v) S.periodo.stipendio = v; else if(!isNaN(fx)&&fx) S.periodo.stipendio = fx;
+  if(!isNaN(sp) && sp>0){
+    const y = new Date(today()-DAY); y.setHours(12);
+    S.movimenti.push({id:uid(), ts:Math.max(parseDate(S.periodo.inizio).getTime()+12*3600000, Math.min(y.getTime(), Date.now())), importo:round2(sp), fonte:'manuale', desc:'Spese precedenti (stima)', cat:'Generale', tipo:'var'});
+  }
+  S.setupFatto = true; save(); closeSheet(); render();
+}
+
+/* ---------------- avvio ---------------- */
+render();
+gestisciURL();
+primoAvvio();
+// se l'app è già aperta, un nuovo link con # non ricarica la pagina: lo intercettiamo qui
+window.addEventListener('hashchange', ()=>{ S = load(); gestisciURL(); });
+// aggiorna a mezzanotte / quando torni sull'app
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ S = load(); render(); } });
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
