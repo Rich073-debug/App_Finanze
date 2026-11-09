@@ -543,7 +543,8 @@ function analizzaNotifica(titolo, testo, fonteHint){
   if(altro || /prepagata/.test(tl)) return {azione:'ignora', motivo:'movimento di '+(altro?altro.nome:'carta prepagata')+' (non pesa sul budget)'};
   if(carta && mie.length && !mie.some(d=>d.endsWith(carta[1])||carta[1].endsWith(d)))
     return {azione:'ignora', motivo:'carta ••'+carta[1]+' di un altro conto (non pesa sul budget)'};
-  let fonte = fonteHint || (/wallet|smartphone/.test(tl) ? 'wallet' : 'carta');
+  // la fonte della macro (wallet / banca / inbank / sms) diventa il mezzo di pagamento: telefono o carta
+  let fonte = (fonteHint==='wallet' || /wallet|smartphone/.test(tl)) ? 'wallet' : 'carta';
   return {azione:'spesa', importo, desc:pulisciDesc(desc), fonte};
 }
 // stesso negozio registrato da Wallet nelle ultime 6 ore? (es. "D Piu Cassa 1" dentro "D Piu Cassa 1 Spello")
