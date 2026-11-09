@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1714">
+<title>Guida – App Finanze</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#0f1714;--card:#17221e;--card2:#1e2c27;--line:#2a3a34;--text:#e8f0ec;--muted:#8fa39a;--accent:#3ee6b4}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.55}
+main{max-width:720px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 60px}
+h1{font-size:26px;margin:8px 0 4px}
+h2{font-size:20px;margin:34px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:22px 0 6px}
+p{margin:10px 0}
+a{color:var(--accent)}
+.muted{color:var(--muted);font-size:14px}
+.cta{display:block;text-align:center;background:var(--accent);color:#06261c;font-weight:700;text-decoration:none;border-radius:14px;padding:15px;margin:16px 0;font-size:17px}
+.toc{background:var(--card);border-radius:16px;padding:12px 18px;margin:16px 0}
+.toc a{display:block;padding:6px 0;text-decoration:none}
+ol,ul{padding-left:22px} li{margin:6px 0}
+code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:14px;word-break:break-all}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+th{background:var(--card2)}
+.box{background:var(--card);border-radius:16px;padding:14px 16px;margin:14px 0}
+.prompt{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;margin:12px 0}
+.prompt pre{margin:0;padding:14px;white-space:pre-wrap;font-size:13.5px;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--text)}
+.prompt button{position:absolute;top:8px;right:8px;background:var(--accent);color:#06261c;border:0;border-radius:10px;padding:7px 12px;font-weight:700;font-size:13px;cursor:pointer}
+.formula{background:var(--card);border-radius:12px;padding:12px;text-align:center;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+<h1>Guida App Finanze</h1>
+<p class="muted">Come installare l'app, collegarla alle notifiche dei pagamenti con MacroDroid e usarla ogni giorno. Serve un telefono Android con Chrome.</p>
+
+<a class="cta" href="./">Apri l'app Finanze</a>
+
+<div class="toc">
+  <a href="#installare">1. Installare l'app</a>
+  <a href="#macrodroid">2. Scaricare MacroDroid e dare i permessi</a>
+  <a href="#automazioni">3. Creare le automazioni</a>
+  <a href="#problemi">4. Se qualcosa non funziona dopo</a>
+  <a href="#funzionamento">5. Come funziona e a cosa serve</a>
+</div>
+
+<h2 id="installare">1. Installare l'app</h2>
+<p>L'app non si scarica dal Play Store: si apre da questo link e si aggiunge alla schermata Home.</p>
+<p><b>Link dell'app:</b> <a href="./">https://rich073-debug.github.io/App_Finanze/</a></p>
+<ol>
+  <li>Apri il link con <b>Chrome</b> (non con altri browser: i dati resterebbero separati).</li>
+  <li>Tocca i tre puntini in alto a destra.</li>
+  <li>Scegli <b>Aggiungi a schermata Home</b> oppure <b>Installa app</b>, poi conferma.</li>
+  <li>Sulla Home compare l'icona verde <b>Finanze</b>: da ora aprila sempre da lì, a schermo intero come un'app normale.</li>
+</ol>
+<p><b>Primo avvio.</b> L'app chiede lo stipendio fisso, la data e l'importo dell'ultimo stipendio e, facoltativo, quanto hai già speso da quel giorno (esclusi i fissi). Poi completa:</p>
+<ul>
+  <li><b>Fisse</b> → aggiungi le spese mensili (mutuo, finanziamento, abbonamenti, PAC…) con importo e giorno del mese (31 = fine mese).</li>
+  <li><b>Fisse</b> → aggiungi le scadenze annuali (bollo, assicurazione, revisione) con importo e data: l'app mette da parte una quota ogni mese.</li>
+  <li><b>Impostazioni</b> → indica il conto principale e le ultime cifre delle carte che usi; aggiungi gli altri conti (risparmi, vacanze, prepagate), i cui movimenti non pesano sul budget.</li>
+  <li><b>Impostazioni → Sicurezza</b> → attiva il PIN e l'impronta.</li>
+</ul>
+<p>I dati restano solo sul tuo telefono: nessun altro li vede, nemmeno chi usa la stessa app.</p>
+<p><b>Bloccato in questa fase?</b> Copia questo testo in un'IA (Claude, ChatGPT, Gemini), completa le parti tra parentesi e allega uno screenshot:</p>
+<div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a installare una web app sul mio telefono Android. Sono poco pratico: rispondi in italiano semplice, dammi UN passo alla volta e chiedimi uno screenshot prima di andare avanti.
+
+L'app si chiama Finanze e non si scarica dal Play Store: si apre dal link https://rich073-debug.github.io/App_Finanze/ con Chrome e si aggiunge alla schermata Home dal menu con i tre puntini ("Aggiungi a schermata Home" o "Installa app"). Deve aprirsi sempre con Chrome, non con altri browser.
+
+Il mio telefono e': [marca e modello]
+Mi sono bloccato qui: [descrivi cosa vedi]</pre></div>
+
+<h2 id="macrodroid">2. Scaricare MacroDroid e dare i permessi</h2>
+<p>MacroDroid è un'app gratuita che legge le notifiche dei pagamenti e le passa all'app Finanze, così le spese si registrano da sole. Senza MacroDroid l'app funziona lo stesso, ma le spese si inseriscono a mano.</p>
+<ol>
+  <li>Installa <b>MacroDroid</b> dal Play Store.</li>
+  <li>Aprila e accetta le schermate iniziali. Al consenso su <b>pubblicità o partner</b> puoi rispondere <b>Rifiuta</b>: non cambia nulla. Al consenso sui <b>dati delle notifiche</b> rispondi <b>Accetta</b>: serve per funzionare.</li>
+  <li><b>Accesso alle notifiche.</b> Il modo più sicuro: crea la prima macro (capitolo 3) e scegli l'evento <i>Notifica ricevuta</i>. MacroDroid apre da solo la pagina giusta: attiva l'interruttore accanto a MacroDroid e conferma.</li>
+  <li><b>Batteria.</b> Impostazioni del telefono → App → MacroDroid → Batteria → <b>Senza restrizioni</b> (o "Non ottimizzare"). Se c'è, attiva anche <b>Consenti attività in background</b>.</li>
+</ol>
+<p><b>Su Xiaomi, Redmi e POCO</b> servono tre impostazioni in più, altrimenti MacroDroid smette di funzionare dopo qualche ora:</p>
+<ul>
+  <li>Impostazioni → App → Gestisci app → MacroDroid → <b>Risparmio batteria: Nessuna restrizione</b>.</li>
+  <li>Nella stessa pagina: <b>Avvio automatico</b> attivo.</li>
+  <li>Apri le app recenti, tieni premuta la scheda di MacroDroid e tocca il <b>lucchetto</b>.</li>
+</ul>
+<p>Non serve dare il permesso <b>SMS</b>: gli SMS della banca si leggono dalla notifica dell'app Messaggi. Se trovi la voce "SMS di servizio", lasciala disattivata.</p>
+<p><b>Bloccato in questa fase?</b> Copia questo testo in un'IA e allega uno screenshot:</p>
+<div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a dare i permessi giusti all'app MacroDroid sul mio telefono Android. Sono poco pratico: rispondi in italiano semplice, dammi UN passo alla volta, indica i pulsanti con il nome esatto che vedo e chiedimi uno screenshot prima di andare avanti.
+
+Mi servono:
+1. Accesso alle notifiche per MacroDroid (deve leggere le notifiche di Google Wallet, della banca e dei messaggi). Se nelle impostazioni non trovo la voce, il modo piu' sicuro e' creare in MacroDroid una macro con l'evento "Notifica ricevuta": MacroDroid apre da solo la pagina giusta.
+2. Batteria "Senza restrizioni" / "Non ottimizzare" per MacroDroid, e attivita' in background consentita.
+3. Se il telefono e' Xiaomi, Redmi o POCO (HyperOS): anche "Avvio automatico" attivo e lucchetto sulla scheda di MacroDroid nelle app recenti.
+Il permesso SMS NON serve: lascialo disattivato.
+
+Il mio telefono e': [marca e modello]
+Mi sono bloccato qui: [descrivi cosa vedi]</pre></div>
+
+<h2 id="automazioni">3. Creare le automazioni</h2>
+<p>Si creano tre macro: una per Google Wallet, una per l'app della banca, una per gli SMS della banca. Si fa la prima per intero e le altre due si copiano cambiando poche cose.</p>
+<table>
+  <tr><th>Macro</th><th>App da ascoltare</th><th>Contenuto testo</th><th>Fine dell'indirizzo</th></tr>
+  <tr><td>Finanze Wallet</td><td>Google Wallet</td><td>Contiene: €</td><td><code>fonte=wallet</code></td></tr>
+  <tr><td>Finanze Banca</td><td>l'app della tua banca (per le BCC del Gruppo Cassa Centrale è Inbank)</td><td>Qualsiasi</td><td><code>fonte=banca</code></td></tr>
+  <tr><td>Finanze SMS</td><td>Messaggi</td><td>Contiene: il nome con cui la banca firma gli SMS</td><td><code>fonte=sms</code></td></tr>
+</table>
+
+<h3>Macro 1: Finanze Wallet</h3>
+<ol>
+  <li>In MacroDroid tocca <b>+</b> (Aggiungi macro). In alto tocca "Inserire nome macro" e scrivi <code>Finanze Wallet</code>.</li>
+  <li>Nel riquadro rosso <b>Eventi</b> tocca <b>+</b> → categoria <b>Notifiche</b> → <b>Notifica ricevuta</b>.</li>
+  <li>Nella finestra che si apre:
+    <ul>
+      <li>accanto a "Tutte le applicazioni" tocca il quadrato con i puntini, spunta solo <b>Google Wallet</b> e premi OK;</li>
+      <li>in <b>Contenuto testo</b> scegli <b>Contiene</b> e scrivi il simbolo <b>€</b>;</li>
+      <li>lascia spuntate "Senza distinzione tra maiuscole e minuscole" ed "Evita eventi multipli", le altre vuote;</li>
+      <li>premi <b>OK</b>.</li>
+    </ul></li>
+  <li>Nel riquadro blu <b>Azioni</b> tocca <b>+</b>, cerca <b>sito</b> con la lente e scegli <b>Apri sito web</b>.</li>
+  <li>Nel campo dell'indirizzo componi la riga in quattro pezzi, senza spazi:
+    <ul>
+      <li>incolla <code>https://rich073-debug.github.io/App_Finanze/#fonte=wallet&amp;titolo=</code></li>
+      <li>tocca <b>…</b> e scegli <b>Titolo notifica</b> (compare <code>{not_title}</code>)</li>
+      <li>scrivi <code>&amp;notifica=</code></li>
+      <li>tocca <b>…</b> e scegli <b>Testo notifica</b> (compare <code>{notification}</code>)</li>
+    </ul></li>
+  <li>Lascia spuntato <b>Parametri di codifica URL</b> e le altre caselle vuote. Premi <b>OK</b>.</li>
+  <li>Salva con la spunta in basso a destra. Nella lista l'interruttore della macro deve essere <b>acceso</b>.</li>
+</ol>
+<p>La riga finale deve essere così:</p>
+<div class="prompt"><button onclick="copia(this)">Copia</button><pre>https://rich073-debug.github.io/App_Finanze/#fonte=wallet&amp;titolo={not_title}&amp;notifica={notification}</pre></div>
+<p><b>Prova.</b> Apri la macro, tre puntini → <b>Testa azioni</b>. Si apre l'app con il messaggio "Notifica ignorata (nessun importo trovato)": è giusto, la prova non contiene un pagamento vero. Se si apre in un browser diverso da Chrome: Impostazioni → App → App predefinite → Browser → Chrome.</p>
+
+<h3>Macro 2: Finanze Banca</h3>
+<ol>
+  <li>Nella lista tieni premuto su <b>Finanze Wallet</b> → <b>Clona</b>. Rinomina la copia <code>Finanze Banca</code>.</li>
+  <li>Evento → <b>Configura</b>: togli Google Wallet e spunta l'<b>app della tua banca</b>; in Contenuto testo scegli <b>Qualsiasi</b> (alcune banche non scrivono l'importo nella notifica). OK.</li>
+  <li>Azione → <b>Configura</b>: cambia <code>fonte=wallet</code> in <code>fonte=banca</code>. OK.</li>
+  <li>Salva e controlla che l'interruttore sia acceso (le copie a volte nascono spente).</li>
+</ol>
+
+<h3>Macro 3: Finanze SMS</h3>
+<ol>
+  <li>Clona <b>Finanze Banca</b> e rinominala <code>Finanze SMS</code>.</li>
+  <li>Evento: togli l'app della banca e spunta <b>Messaggi</b>; Contenuto testo <b>Contiene</b> e scrivi il nome con cui la banca firma gli SMS. Lo vedi in cima alla conversazione: per le BCC del Gruppo Cassa Centrale è <code>Inbank</code>, per altre banche è un altro nome.</li>
+  <li>Azione: cambia <code>fonte=banca</code> in <code>fonte=sms</code>. Salva e accendi l'interruttore.</li>
+</ol>
+
+<h3>Macro 4, facoltativa: promemoria del backup</h3>
+<ul>
+  <li>Evento: <b>Data/Ora</b> → giorno <b>1</b> del mese, ore <b>9:00</b>.</li>
+  <li>Azione: <b>Apri sito web</b> con <code>https://rich073-debug.github.io/App_Finanze/#azione=backup</code></li>
+</ul>
+<p>Quella mattina l'app si apre con il riquadro del backup: basta un tocco. Nota: la versione gratuita di MacroDroid permette poche macro (di solito 5).</p>
+<p><b>Altre banche.</b> Inbank non è il nome di ogni banca: è l'app delle banche del Gruppo Cassa Centrale (BCC, Casse Rurali) e di una ventina di altre banche clienti (<a href="https://www.cassacentrale.it/en/launching-new-inbank-app">Cassa Centrale</a>). Con un'altra banca, nella macro 2 scegli la sua app e nella macro 3 il nome con cui firma gli SMS. La macro di Google Wallet funziona con qualsiasi banca. Se la notifica della tua banca contiene l'importo in euro l'app di solito lo riconosce; il riconoscimento è stato provato solo con Inbank, quindi dopo il primo pagamento controlla in Impostazioni → <i>Ultime notifiche ricevute</i>.</p>
+<p><b>Bloccato in questa fase?</b> Copia questo testo in un'IA e allega uno screenshot:</p>
+<div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a creare delle macro in MacroDroid sul mio telefono Android. Sono poco pratico: rispondi in italiano semplice, dammi UN passo alla volta, indica i pulsanti con il nome esatto che vedo e chiedimi uno screenshot prima di andare avanti. Prima di farmi premere OK sull'indirizzo, chiedimi uno screenshot per controllarlo.
+
+Ogni macro ha: evento "Notifica ricevuta" (riquadro rosso Eventi) e azione "Apri sito web" (riquadro blu Azioni). Nell'azione: "Parametri di codifica URL" spuntato, tutte le altre caselle vuote. L'indirizzo e':
+https://rich073-debug.github.io/App_Finanze/#fonte=FONTE&amp;titolo={not_title}&amp;notifica={notification}
+{not_title} e {notification} NON si scrivono a mano: si inseriscono con il pulsante "..." scegliendo "Titolo notifica" e "Testo notifica".
+
+Le macro:
+1. Finanze Wallet: app Google Wallet, Contenuto testo "Contiene" il simbolo €, FONTE = wallet.
+2. Finanze Banca: app della mia banca, Contenuto testo "Qualsiasi", FONTE = banca.
+3. Finanze SMS: app Messaggi, Contenuto testo "Contiene" il nome con cui la banca firma gli SMS, FONTE = sms.
+Le macro 2 e 3 si fanno clonando la prima (tieni premuto sulla macro &gt; Clona) e cambiando app, contenuto e FONTE. Dopo il salvataggio l'interruttore della macro deve essere acceso.
+Prova: apri la macro &gt; tre puntini &gt; "Testa azioni": deve aprirsi l'app Finanze in Chrome con "Notifica ignorata (nessun importo trovato)", ed e' corretto.
+
+La mia banca e': [nome banca e nome della sua app]
+Mi sono bloccato qui: [descrivi cosa vedi]</pre></div>
+
+<h2 id="problemi">4. Se qualcosa non funziona dopo</h2>
+<p>Ogni fase qui sopra ha il suo prompt per chi si blocca durante la configurazione. Questo serve dopo, quando è tutto configurato ma un pagamento non viene registrato, compare due volte o l'importo è sbagliato. Prima apri l'app → Impostazioni → <i>Ultime notifiche ricevute</i> e fai uno screenshot: mostra il testo arrivato e cosa ne ha fatto l'app. Non inviare mai numeri completi di carte, PIN o password.</p>
+<div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a capire perche' un'automazione non funziona. Sono poco pratico: rispondi in italiano semplice e dammi UN controllo alla volta.
+
+Come funziona il sistema: sul mio telefono Android l'app MacroDroid ascolta le notifiche di Google Wallet, della mia banca e dell'app Messaggi. Quando arriva un pagamento apre l'app web Finanze (https://rich073-debug.github.io/App_Finanze/ , in Chrome) con un indirizzo che contiene il testo della notifica dopo il simbolo #. L'app legge importo e negozio e registra la spesa. Se la notifica della banca non contiene l'importo, l'app lo chiede. Se Wallet e banca avvisano per lo stesso pagamento, l'app salta il doppione.
+
+Cose da controllare in ordine:
+1. In MacroDroid l'interruttore della macro e' acceso e la macro risulta eseguita.
+2. MacroDroid ha ancora l'accesso alle notifiche e la batteria "Senza restrizioni" (su Xiaomi anche Avvio automatico e lucchetto nelle app recenti).
+3. Nell'evento e' scelta l'app giusta (Google Wallet, l'app della banca, Messaggi).
+4. I link si aprono in Chrome (browser predefinito).
+5. Nell'app Finanze, Impostazioni &gt; "Ultime notifiche ricevute" mostra la notifica e l'esito (registrata, ignorata e perche').
+Se l'importo non viene riconosciuto con la mia banca, aiutami a descrivere il problema con il testo esatto della notifica (senza dati sensibili) da girare a chi gestisce l'app.
+
+La mia banca e': [nome]
+Il problema: [cosa succede o cosa non succede]</pre></div>
+<p>Allega sempre lo screenshot di <i>Ultime notifiche ricevute</i> e, se c'è, quello della notifica originale.</p>
+
+<h2 id="funzionamento">5. Come funziona e a cosa serve</h2>
+<p>L'app ti dice ogni giorno quanto puoi spendere senza intaccare spese fisse, scadenze e risparmi. Il numero grande nella schermata <b>Oggi</b> è tutto quello che serve guardare.</p>
+<p><b>Il calcolo.</b> Il periodo va dall'arrivo dello stipendio al giorno 21 del mese dopo (modificabile in Impostazioni), così resti coperto anche se lo stipendio arriva tardi:</p>
+<div class="formula">budget di oggi = (stipendio + entrate extra − fisse − quote scadenze − risparmio − già speso) ÷ giorni rimasti</div>
+<p>Se oggi spendi meno, domani hai un po' di più; se sfori, i giorni successivi si abbassano.</p>
+<p><b>Cosa succede quando paghi.</b></p>
+<ol>
+  <li>Paghi con il telefono: Google Wallet manda la notifica, MacroDroid apre l'app e la spesa è registrata con importo e negozio.</li>
+  <li>Paghi con la carta fisica: la notifica della banca non sempre contiene l'importo, quindi l'app te lo chiede.</li>
+  <li>Se banca e Wallet avvisano per lo stesso pagamento, l'app riconosce il doppione e lo salta.</li>
+  <li>Contanti: tocca <b>+ Spesa</b> oppure <b>Detta</b> e di' l'importo. Tenendo premuta l'icona trovi le scorciatoie.</li>
+  <li>Arriva lo stipendio: l'app propone di aprire il nuovo periodo e mette da parte le quote per le scadenze.</li>
+</ol>
+<p><b>Le sezioni.</b></p>
+<ul>
+  <li><b>Oggi:</b> budget del giorno, riepilogo del periodo, soldi da spostare sui conti di risparmio, quanto deve restare sul conto principale, previsioni (prossimo rifornimento, scadenze in arrivo).</li>
+  <li><b>Movimenti:</b> tutte le spese per giorno e per categoria; tocca una spesa per correggerla o eliminarla.</li>
+  <li><b>Fisse:</b> spese mensili, scadenze annuali con accantonamento, entrate extra (trasferte, lavori occasionali).</li>
+  <li><b>Impostazioni:</b> stipendio, obiettivo di risparmio diviso per conto, conti e carte, sicurezza, backup.</li>
+</ul>
+<p><b>Perché è utile.</b></p>
+<ul>
+  <li>Sai sempre quanto puoi spendere oggi, senza fare conti.</li>
+  <li>Bollo e assicurazione non arrivano più come una botta: i soldi sono già da parte.</li>
+  <li>Il risparmio è deciso a inizio periodo, non "quello che avanza".</li>
+  <li>Dopo qualche rifornimento l'app stima quando servirà il prossimo pieno e quanto costerà.</li>
+</ul>
+<p><b>Sicurezza e backup.</b> Con PIN e impronta solo tu apri l'app; le macro registrano le spese anche ad app bloccata. All'inizio di ogni mese l'app propone il backup: salvalo su Google Drive, così non perdi nulla se cambi o perdi il telefono.</p>
+
+<a class="cta" href="./">Apri l'app Finanze</a>
+</main>
+<script>
+function copia(b){
+  const t = b.nextElementSibling.textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>{ b.textContent='Copiato ✓'; setTimeout(()=>b.textContent='Copia',2000); })
+  .catch(()=>{ const r=document.createRange(); r.selectNodeContents(b.nextElementSibling); const s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='Tieni premuto e copia'; });
+}
+</script>
+</body>
+</html>

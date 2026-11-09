@@ -170,6 +170,11 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 <!-- ============ IMPOSTAZIONI ============ -->
 <section class="view" id="v-imp">
   <div class="card">
+    <h2>Guida</h2>
+    <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con MacroDroid e usarla al meglio.</p>
+    <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
+  </div>
+  <div class="card">
     <h2>Budget</h2>
     <label>Stipendio fisso mensile (€)</label>
     <input type="number" inputmode="decimal" step="0.01" id="iStip">
@@ -1024,7 +1029,7 @@ function toast(msg, btnTxt, btnFn){
 function primoAvvio(){
   if(S.setupFatto) return;
   openSheet(`<h3>Benvenuto 👋</h3>
-    <p class="muted">Inserisci lo stipendio per partire. Spese fisse, scadenze annuali e conti li aggiungi poi nelle sezioni "Fisse" e "Impostazioni". I dati restano solo su questo telefono.</p>
+    <p class="muted">Inserisci lo stipendio per partire. Spese fisse, scadenze annuali e conti li aggiungi poi nelle sezioni "Fisse" e "Impostazioni". I dati restano solo su questo telefono. <a href="guida.html" style="color:var(--accent)">Leggi la guida</a></p>
     <label>Stipendio fisso mensile (€)</label><input id="pFisso" type="text" inputmode="decimal" placeholder="es. 1500">
     <label>Data dell'ultimo stipendio</label><input id="pData" type="date" value="${S.periodo.inizio}">
     <label>Importo dell'ultimo stipendio (€)</label><input id="pImp" type="text" inputmode="decimal" value="${S.periodo.stipendio?String(S.periodo.stipendio).replace('.',','):''}">
