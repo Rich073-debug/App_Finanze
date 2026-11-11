@@ -179,6 +179,8 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con MacroDroid e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>11 novembre 2026 (2)</b></p>
+    <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
     <h2>Budget</h2>
@@ -1028,6 +1030,14 @@ function testNotifica(){
   const out = document.getElementById('testOut');
   out.innerHTML = r.azione==='ignora' ? 'Ignorata: '+esc(r.motivo) :
     `Azione: <b>${r.azione}</b> · importo <b>${fmt(r.importo)}</b>${r.desc?' · '+esc(r.desc):''}${r.fonte?' · fonte '+r.fonte:''}`;
+}
+
+// scarica subito l'ultima versione (svuota la copia salvata, i dati NON vengono toccati)
+async function aggiornaApp(){
+  toast('Aggiornamento in corso…');
+  try{ if(window.caches){ const ks = await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }
+       const regs = await navigator.serviceWorker?.getRegistrations?.() || []; await Promise.all(regs.map(r=>r.update().catch(()=>{}))); }catch(e){}
+  location.replace(location.pathname + '?v=' + Date.now());
 }
 
 /* ---------------- toast ---------------- */
