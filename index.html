@@ -115,6 +115,12 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
       <div class="stat"><div class="k">Giorni rimasti</div><div class="v" id="sGiorni">—</div></div>
       <div class="stat"><div class="k">Risparmio previsto</div><div class="v" id="sProiez">—</div></div>
     </div>
+    <div class="stat" style="margin-top:10px" id="sRiserva">
+      <div class="k">Messi da parte per le spese future</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div class="v" id="sRisVal">—</div><div class="k" id="sRisTot"></div></div>
+      <div class="bar" style="margin:8px 0 4px;height:6px"><div id="sRisBar" style="width:0%"></div></div>
+      <div class="k" id="sRisDett"></div>
+    </div>
     <p class="muted" id="periodoTxt" style="margin:12px 0 0"></p>
   </div>
 
@@ -680,6 +686,14 @@ function render(){
   document.getElementById('sDisp').textContent = fmt0(c.disponibile);
   document.getElementById('sSpeso').textContent = fmt0(c.spesoTot);
   document.getElementById('sGiorni').textContent = c.ritardo ? 'Stip. in ritardo' : c.giorniRim;
+  // riserva per le scadenze: già accantonato nei periodi passati + quota di questo periodo
+  const risTot = S.annuali.reduce((t,a)=>t+a.importo,0);
+  const risVal = S.annuali.reduce((t,a)=>t+Math.min(a.importo,(a.accantonato||0)+quotaAnnuale(a)),0);
+  document.getElementById('sRiserva').style.display = S.annuali.length ? '' : 'none';
+  document.getElementById('sRisVal').textContent = fmt(risVal);
+  document.getElementById('sRisTot').textContent = 'su '+fmt(risTot)+' di scadenze';
+  document.getElementById('sRisBar').style.width = (risTot? Math.min(100,risVal/risTot*100):0)+'%';
+  document.getElementById('sRisDett').textContent = 'Di cui '+fmt(c.quote)+' da questo stipendio. Restano sul conto principale finché non paghi.';
   const pr = document.getElementById('sProiez');
   pr.textContent = (c.proiezione>=0?'+':'')+fmt0(c.proiezione);
   pr.className = 'v ' + (c.proiezione>=0?'ok':'bad');
