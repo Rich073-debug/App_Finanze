@@ -7,7 +7,7 @@
 <title>Guida – App Finanze</title>
 <link rel="icon" href="icon-192.png">
 <style>
-:root{--bg:#0f1714;--card:#17221e;--card2:#1e2c27;--line:#2a3a34;--text:#e8f0ec;--muted:#8fa39a;--accent:#3ee6b4}
+:root{--bg:#0f1714;--card:#17221e;--card2:#1e2c27;--line:#2a3a34;--text:#e8f0ec;--muted:#8fa39a;--accent:#3ee6b4;--warn:#f5b84a}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.55}
 main{max-width:720px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 60px}
@@ -25,24 +25,31 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:14px;wo
 table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;display:block;overflow-x:auto}
 th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
 th{background:var(--card2)}
-.box{background:var(--card);border-radius:16px;padding:14px 16px;margin:14px 0}
+.note{background:var(--card);border-left:4px solid var(--warn);border-radius:10px;padding:12px 14px;margin:14px 0;font-size:15px}
 .prompt{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;margin:12px 0}
 .prompt pre{margin:0;padding:44px 14px 14px;white-space:pre-wrap;font-size:13.5px;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--text)}
 .prompt button{position:absolute;top:8px;right:8px;background:var(--accent);color:#06261c;border:0;border-radius:10px;padding:7px 12px;font-weight:700;font-size:13px;cursor:pointer}
 .formula{background:var(--card);border-radius:12px;padding:12px;text-align:center;font-weight:600}
+.shots{display:flex;gap:12px;overflow-x:auto;padding:4px 0 10px;margin:10px 0}
+figure{margin:0;flex:0 0 auto;width:200px}
+figure img{width:200px;border-radius:14px;border:1px solid var(--line);display:block;cursor:zoom-in}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.35}
+.zoom{position:fixed;inset:0;background:#000d;display:none;align-items:center;justify-content:center;z-index:9;padding:16px}
+.zoom.on{display:flex}
+.zoom img{max-width:100%;max-height:100%;border-radius:14px}
 </style>
 </head>
 <body>
 <main>
 <h1>Guida App Finanze</h1>
-<p class="muted">Come installare l'app, collegarla alle notifiche dei pagamenti con MacroDroid e usarla ogni giorno. Serve un telefono Android con Chrome.</p>
+<p class="muted">Come installare l'app, collegarla alle notifiche dei pagamenti con Automate e usarla ogni giorno. Serve un telefono Android con Chrome.</p>
 
 <a class="cta" href="./">Apri l'app Finanze</a>
 
 <div class="toc">
   <a href="#installare">1. Installare l'app</a>
-  <a href="#macrodroid">2. Scaricare MacroDroid e dare i permessi</a>
-  <a href="#automazioni">3. Creare le automazioni</a>
+  <a href="#automate">2. Scaricare Automate e dare i permessi</a>
+  <a href="#flussi">3. Creare i flussi automatici</a>
   <a href="#problemi">4. Se qualcosa non funziona dopo</a>
   <a href="#funzionamento">5. Come funziona e a cosa serve</a>
 </div>
@@ -72,103 +79,120 @@ L'app si chiama Finanze e non si scarica dal Play Store: si apre dal link https:
 Il mio telefono e': [marca e modello]
 Mi sono bloccato qui: [descrivi cosa vedi]</pre></div>
 
-<h2 id="macrodroid">2. Scaricare MacroDroid e dare i permessi</h2>
-<p>MacroDroid è un'app gratuita che legge le notifiche dei pagamenti e le passa all'app Finanze, così le spese si registrano da sole. Senza MacroDroid l'app funziona lo stesso, ma le spese si inseriscono a mano.</p>
+<h2 id="automate">2. Scaricare Automate e dare i permessi</h2>
+<p><b>Automate</b> (di LlamaLab) è un'app gratuita che legge le notifiche dei pagamenti e le passa all'app Finanze, così le spese si registrano da sole. Funziona con piccoli schemi a blocchi, chiamati <i>flussi</i>: è più intuitiva di quanto sembri. Senza Automate l'app Finanze funziona lo stesso, ma le spese si inseriscono a mano.</p>
 <ol>
-  <li>Installa <b>MacroDroid</b> dal Play Store.</li>
-  <li>Aprila e accetta le schermate iniziali. Al consenso su <b>pubblicità o partner</b> puoi rispondere <b>Rifiuta</b>: non cambia nulla. Al consenso sui <b>dati delle notifiche</b> rispondi <b>Accetta</b>: serve per funzionare.</li>
-  <li><b>Accesso alle notifiche.</b> Il modo più sicuro: crea la prima macro (capitolo 3) e scegli l'evento <i>Notifica ricevuta</i>. MacroDroid apre da solo la pagina giusta: attiva l'interruttore accanto a MacroDroid e conferma.</li>
-  <li><b>Batteria.</b> Impostazioni del telefono → App → MacroDroid → Batteria → <b>Senza restrizioni</b> (o "Non ottimizzare"). Se c'è, attiva anche <b>Consenti attività in background</b>.</li>
+  <li>Installa <b>Automate</b> dal Play Store: lo sviluppatore deve essere <b>LlamaLab</b>.</li>
+  <li>Aprila e salta pure la guida introduttiva.</li>
+  <li>I permessi principali li chiede Automate da solo quando avvii il primo flusso (capitolo 3). Concedi <b>accesso alle notifiche</b> e <b>Mostra sopra altre app</b>.</li>
+  <li><b>Non attivare l'Accessibilità</b> ("Usa Automate" nella pagina Accessibilità): dà un controllo molto ampio sul telefono e ai nostri flussi non serve.</li>
 </ol>
-<p><b>Su Xiaomi, Redmi e POCO</b> servono tre impostazioni in più, altrimenti MacroDroid smette di funzionare dopo qualche ora:</p>
+<p><b>Impostazioni del telefono</b> (Impostazioni → App → Gestisci app → Automate):</p>
 <ul>
-  <li>Impostazioni → App → Gestisci app → MacroDroid → <b>Risparmio batteria: Nessuna restrizione</b>.</li>
-  <li>Nella stessa pagina: <b>Avvio automatico</b> attivo.</li>
-  <li>Apri le app recenti, tieni premuta la scheda di MacroDroid e tocca il <b>lucchetto</b>.</li>
+  <li><b>Alimentazione</b> → <b>Nessuna restrizione</b>.</li>
+  <li><b>Sospendi l'attività dell'app se inutilizzata</b> → <b>spento</b> (altrimenti dopo qualche settimana Android toglie i permessi).</li>
+  <li><b>Altri permessi</b> → attiva <b>Aprire nuove finestre durante l'esecuzione in background</b> e <b>Mostrare finestre pop-up</b>: servono ad aprire l'app Finanze anche a telefono in tasca.</li>
+  <li><b>Avvio automatico</b>, se c'è (su alcune versioni di HyperOS non esiste più).</li>
+  <li>Su Xiaomi, Redmi e POCO: nelle app recenti tieni premuta la scheda di Automate e tocca il <b>lucchetto</b>.</li>
 </ul>
-<p>Non serve dare il permesso <b>SMS</b>: gli SMS della banca si leggono dalla notifica dell'app Messaggi. Se trovi la voce "SMS di servizio", lasciala disattivata.</p>
+<p>Dentro Automate: menu ☰ → <b>Settings</b> → spunta <b>Run on system startup</b>, così i flussi ripartono da soli quando riaccendi il telefono.</p>
+<div class="shots">
+  <figure><img src="img/automate-7-info-app.jpg" alt="Informazioni app di Automate" loading="lazy"><figcaption>Informazioni app: spegni "Sospendi l'attività se inutilizzata", Alimentazione su Nessuna restrizione.</figcaption></figure>
+  <figure><img src="img/automate-6-altri-permessi.jpg" alt="Altri permessi di Automate" loading="lazy"><figcaption>Altri permessi (Xiaomi): finestre in background e pop-up attivi.</figcaption></figure>
+</div>
+<div class="note"><b>Perché non MacroDroid?</b> Funziona in modo simile, ma la versione gratuita ora va "ricaricata" guardando una pubblicità ogni 3 giorni: se te ne dimentichi, le spese smettono di registrarsi. Con la versione Pro (pagamento unico) va benissimo anche MacroDroid.</div>
 <p><b>Bloccato in questa fase?</b> Copia questo testo in un'IA e allega uno screenshot:</p>
-<div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a dare i permessi giusti all'app MacroDroid sul mio telefono Android. Sono poco pratico: rispondi in italiano semplice, dammi UN passo alla volta, indica i pulsanti con il nome esatto che vedo e chiedimi uno screenshot prima di andare avanti.
+<div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a dare i permessi giusti all'app Automate (di LlamaLab) sul mio telefono Android. Sono poco pratico: rispondi in italiano semplice, dammi UN passo alla volta, indica i pulsanti con il nome esatto che vedo e chiedimi uno screenshot prima di andare avanti.
 
 Mi servono:
-1. Accesso alle notifiche per MacroDroid (deve leggere le notifiche di Google Wallet, della banca e dei messaggi). Se nelle impostazioni non trovo la voce, il modo piu' sicuro e' creare in MacroDroid una macro con l'evento "Notifica ricevuta": MacroDroid apre da solo la pagina giusta.
-2. Batteria "Senza restrizioni" / "Non ottimizzare" per MacroDroid, e attivita' in background consentita.
-3. Se il telefono e' Xiaomi, Redmi o POCO (HyperOS): anche "Avvio automatico" attivo e lucchetto sulla scheda di MacroDroid nelle app recenti.
-Il permesso SMS NON serve: lascialo disattivato.
+1. Accesso alle notifiche per Automate e "Mostra sopra altre app" (di solito li chiede Automate stesso quando avvio un flusso).
+2. Alimentazione/Batteria "Nessuna restrizione" per Automate e "Sospendi l'attivita' dell'app se inutilizzata" spento.
+3. Se il telefono e' Xiaomi, Redmi o POCO (HyperOS): in "Altri permessi" attivi "Aprire nuove finestre durante l'esecuzione in background" e "Mostrare finestre pop-up"; "Avvio automatico" se esiste; lucchetto sulla scheda di Automate nelle app recenti.
+4. In Automate: menu > Settings > "Run on system startup" spuntato.
+L'Accessibilita' NON serve: non attivarla.
 
 Il mio telefono e': [marca e modello]
 Mi sono bloccato qui: [descrivi cosa vedi]</pre></div>
 
-<h2 id="automazioni">3. Creare le automazioni</h2>
-<p>Si creano tre macro: una per Google Wallet, una per l'app della banca, una per gli SMS della banca. Si fa la prima per intero e le altre due si copiano cambiando poche cose.</p>
+<h2 id="flussi">3. Creare i flussi automatici</h2>
+<p>Servono tre flussi, uno per ogni app che manda notifiche di pagamento. Si fa il primo per intero; gli altri due si copiano e si cambiano due cose.</p>
 <table>
-  <tr><th>Macro</th><th>App da ascoltare</th><th>Contenuto testo</th><th>Fine dell'indirizzo</th></tr>
-  <tr><td>Finanze Wallet</td><td>Google Wallet</td><td>Contiene: €</td><td><code>fonte=wallet</code></td></tr>
-  <tr><td>Finanze Banca</td><td>l'app della tua banca (per le BCC del Gruppo Cassa Centrale è Inbank)</td><td>Qualsiasi</td><td><code>fonte=banca</code></td></tr>
-  <tr><td>Finanze SMS</td><td>Messaggi</td><td>Contiene: il nome con cui la banca firma gli SMS</td><td><code>fonte=sms</code></td></tr>
+  <tr><th>Flusso</th><th>Package (app da ascoltare)</th><th>Title (input)</th><th>Nell'indirizzo</th></tr>
+  <tr><td>Finanze Wallet</td><td>Google Wallet</td><td>vuoto</td><td><code>fonte=wallet</code></td></tr>
+  <tr><td>Finanze Banca</td><td>l'app della <b>tua</b> banca</td><td>vuoto</td><td><code>fonte=banca</code></td></tr>
+  <tr><td>Finanze SMS</td><td>Messaggi</td><td><code>*NomeBanca*</code></td><td><code>fonte=sms</code></td></tr>
 </table>
+<div class="note"><b>Inbank è solo un esempio.</b> Negli screenshot e negli esempi compare <b>Inbank</b>, l'app delle banche del Gruppo Cassa Centrale (BCC, Casse Rurali). Tu devi scegliere <b>l'app della tua banca</b> e, per gli SMS, il nome con cui la tua banca firma i messaggi (lo vedi in cima alla conversazione).</div>
 
-<h3>Macro 1: Finanze Wallet</h3>
+<h3>Flusso 1: Finanze Wallet</h3>
 <ol>
-  <li>In MacroDroid tocca <b>+</b> (Aggiungi macro). In alto tocca "Inserire nome macro" e scrivi <code>Finanze Wallet</code>.</li>
-  <li>Nel riquadro rosso <b>Eventi</b> tocca <b>+</b> → categoria <b>Notifiche</b> → <b>Notifica ricevuta</b>.</li>
-  <li>Nella finestra che si apre:
+  <li>In Automate tocca il <b>+</b> per creare un nuovo flusso: compare un solo blocco, <b>Flow beginning</b>.</li>
+  <li>Tocca il <b>+</b> azzurro, cerca con la lente <code>notification</code> e scegli <b>Notification posted?</b>. Trascinalo sotto al primo blocco e toccalo.</li>
+  <li>Compila così:
     <ul>
-      <li>accanto a "Tutte le applicazioni" tocca il quadrato con i puntini, spunta solo <b>Google Wallet</b> e premi OK;</li>
-      <li>in <b>Contenuto testo</b> scegli <b>Contiene</b> e scrivi il simbolo <b>€</b>;</li>
-      <li>lascia spuntate "Senza distinzione tra maiuscole e minuscole" ed "Evita eventi multipli", le altre vuote;</li>
-      <li>premi <b>OK</b>.</li>
+      <li><b>Proceed</b>: lascia <b>When transition</b>;</li>
+      <li><b>Package</b>: freccetta ▼ → <b>Google Wallet</b>;</li>
+      <li>più in basso, in <b>Output variables</b>: <b>Title</b> = <code>titolo</code>, <b>Message</b> = <code>testo</code> (minuscolo, senza spazi);</li>
+      <li>tutto il resto vuoto. Premi <b>SAVE</b>.</li>
     </ul></li>
-  <li>Nel riquadro blu <b>Azioni</b> tocca <b>+</b>, cerca <b>sito</b> con la lente e scegli <b>Apri sito web</b>.</li>
-  <li>Nel campo dell'indirizzo componi la riga in quattro pezzi, senza spazi:
+  <li>Tocca il <b>+</b>, cerca <code>content view</code> e scegli <b>Content view</b>. Mettilo sotto e toccalo.</li>
+  <li>Nella casella <b>Content URI</b> tocca il simbolo <b>fx</b> (si accende) e incolla tutto su una riga:
+    <div class="prompt"><button onclick="copia(this)">Copia</button><pre>"https://rich073-debug.github.io/App_Finanze/#fonte=wallet&amp;titolo=" ++ titolo ++ "&amp;notifica=" ++ testo</pre></div>
+    In <b>Package</b> scegli <b>Chrome</b>. Premi <b>SAVE</b>.</li>
+  <li><b>Collega i blocchi</b> trascinando i pallini:
     <ul>
-      <li>incolla <code>https://rich073-debug.github.io/App_Finanze/#fonte=wallet&amp;titolo=</code></li>
-      <li>tocca <b>…</b> e scegli <b>Titolo notifica</b> (compare <code>{not_title}</code>)</li>
-      <li>scrivi <code>&amp;notifica=</code></li>
-      <li>tocca <b>…</b> e scegli <b>Testo notifica</b> (compare <code>{notification}</code>)</li>
-    </ul></li>
-  <li>Lascia spuntato <b>Parametri di codifica URL</b> e le altre caselle vuote. Premi <b>OK</b>.</li>
-  <li>Salva con la spunta in basso a destra. Nella lista l'interruttore della macro deve essere <b>acceso</b>.</li>
+      <li><b>GO</b> (Flow beginning) → Notification posted?</li>
+      <li><b>YES</b> (Notification posted?) → Content view</li>
+      <li><b>OK</b> (Content view) → di nuovo Notification posted?</li>
+      <li><b>NO</b> (Notification posted?) → su sé stesso</li>
+    </ul>
+    Gli ultimi due servono a far continuare il flusso dopo ogni notifica: senza, funzionerebbe una volta sola.</li>
+  <li>Tocca il nome in alto e chiamalo <code>Finanze Wallet</code>. Torna indietro, apri il flusso e premi <b>Start</b>. Concedi i permessi richiesti.</li>
 </ol>
-<p>La riga finale deve essere così:</p>
-<div class="prompt"><button onclick="copia(this)">Copia</button><pre>https://rich073-debug.github.io/App_Finanze/#fonte=wallet&amp;titolo={not_title}&amp;notifica={notification}</pre></div>
-<p><b>Prova.</b> Apri la macro, tre puntini → <b>Testa azioni</b>. Si apre l'app con il messaggio "Notifica ignorata (nessun importo trovato)": è giusto, la prova non contiene un pagamento vero. Se si apre in un browser diverso da Chrome: Impostazioni → App → App predefinite → Browser → Chrome.</p>
+<div class="shots">
+  <figure><img src="img/automate-1-nuovo-flusso.jpg" alt="Nuovo flusso" loading="lazy"><figcaption>1. Nuovo flusso: c'è solo Flow beginning.</figcaption></figure>
+  <figure><img src="img/automate-2-notification-posted.jpg" alt="Notification posted" loading="lazy"><figcaption>2. Notification posted?: Proceed e Package.</figcaption></figure>
+  <figure><img src="img/automate-3-output-variables.jpg" alt="Output variables" loading="lazy"><figcaption>3. Output variables: titolo e testo.</figcaption></figure>
+  <figure><img src="img/automate-4-content-view.jpg" alt="Content view" loading="lazy"><figcaption>4. Content view: l'indirizzo con fx acceso.</figcaption></figure>
+  <figure><img src="img/automate-5-schema.jpg" alt="Schema completo" loading="lazy"><figcaption>5. Lo schema finito con i 4 collegamenti.</figcaption></figure>
+</div>
 
-<h3>Macro 2: Finanze Banca</h3>
+<h3>Flusso 2: Finanze Banca</h3>
 <ol>
-  <li>Nella lista tieni premuto su <b>Finanze Wallet</b> → <b>Clona</b>. Rinomina la copia <code>Finanze Banca</code>.</li>
-  <li>Evento → <b>Configura</b>: togli Google Wallet e spunta l'<b>app della tua banca</b>; in Contenuto testo scegli <b>Qualsiasi</b> (alcune banche non scrivono l'importo nella notifica). OK.</li>
-  <li>Azione → <b>Configura</b>: cambia <code>fonte=wallet</code> in <code>fonte=banca</code>. OK.</li>
-  <li>Salva e controlla che l'interruttore sia acceso (le copie a volte nascono spente).</li>
+  <li>Nell'elenco tieni premuto su <b>Finanze Wallet</b> → <b>Duplicate</b>. Rinomina la copia <code>Finanze Banca</code>.</li>
+  <li><b>Notification posted?</b> → <b>Package</b>: l'app della <b>tua banca</b> (nell'esempio, Inbank). SAVE.</li>
+  <li><b>Content view</b> → nell'indirizzo cambia <code>fonte=wallet</code> in <code>fonte=banca</code>. SAVE.</li>
+  <li>Premi <b>Start</b>.</li>
 </ol>
 
-<h3>Macro 3: Finanze SMS</h3>
+<h3>Flusso 3: Finanze SMS</h3>
 <ol>
-  <li>Clona <b>Finanze Banca</b> e rinominala <code>Finanze SMS</code>.</li>
-  <li>Evento: togli l'app della banca e spunta <b>Messaggi</b>; Contenuto testo <b>Contiene</b> e scrivi il nome con cui la banca firma gli SMS. Lo vedi in cima alla conversazione: per le BCC del Gruppo Cassa Centrale è <code>Inbank</code>, per altre banche è un altro nome.</li>
-  <li>Azione: cambia <code>fonte=banca</code> in <code>fonte=sms</code>. Salva e accendi l'interruttore.</li>
+  <li>Duplica <b>Finanze Banca</b> e rinominalo <code>Finanze SMS</code>.</li>
+  <li><b>Notification posted?</b> → <b>Package</b>: <b>Messaggi</b>. Nella casella <b>Title</b> in alto (tra gli <i>Input arguments</i>, non tra le Output variables) scrivi il nome della banca tra asterischi, per esempio <code>*Inbank*</code>: così il flusso reagisce solo agli SMS della banca. SAVE.</li>
+  <li><b>Content view</b> → cambia <code>fonte=banca</code> in <code>fonte=sms</code>. SAVE e <b>Start</b>.</li>
 </ol>
-
-<h3>Macro 4, facoltativa: promemoria del backup</h3>
-<ul>
-  <li>Evento: <b>Data/Ora</b> → giorno <b>1</b> del mese, ore <b>9:00</b>.</li>
-  <li>Azione: <b>Apri sito web</b> con <code>https://rich073-debug.github.io/App_Finanze/#azione=backup</code></li>
-</ul>
-<p>Quella mattina l'app si apre con il riquadro del backup: basta un tocco. Nota: la versione gratuita di MacroDroid permette poche macro (di solito 5).</p>
-<p><b>Altre banche.</b> Inbank non è il nome di ogni banca: è l'app delle banche del Gruppo Cassa Centrale (BCC, Casse Rurali) e di una ventina di altre banche clienti (<a href="https://www.cassacentrale.it/en/launching-new-inbank-app">Cassa Centrale</a>). Con un'altra banca, nella macro 2 scegli la sua app e nella macro 3 il nome con cui firma gli SMS. La macro di Google Wallet funziona con qualsiasi banca. Se la notifica della tua banca contiene l'importo in euro l'app di solito lo riconosce; il riconoscimento è stato provato solo con Inbank, quindi dopo il primo pagamento controlla in Impostazioni → <i>Ultime notifiche ricevute</i>.</p>
+<p>Alla fine, nell'elenco di Automate, i tre flussi hanno a sinistra una <b>rotellina</b>: vuol dire che sono avviati e aspettano le notifiche.</p>
+<div class="shots">
+  <figure><img src="img/automate-8-flussi-avviati.jpg" alt="Tre flussi avviati" loading="lazy"><figcaption>I tre flussi avviati (rotellina a sinistra).</figcaption></figure>
+</div>
+<p><b>La prova.</b> Al primo pagamento con il telefono si apre da sola l'app Finanze con "✓ … — oggi ti restano …". Se paghi con la carta fisica e la notifica della banca non contiene l'importo, l'app te lo chiede. Controlla in <b>Movimenti</b> che la spesa compaia una sola volta.</p>
+<p><b>Altre banche.</b> La lettura delle notifiche è stata provata con Inbank. Con un'altra banca, se la notifica contiene l'importo in euro di solito funziona; dopo il primo pagamento controlla in Impostazioni → <i>Ultime notifiche ricevute</i>.</p>
 <p><b>Bloccato in questa fase?</b> Copia questo testo in un'IA e allega uno screenshot:</p>
-<div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a creare delle macro in MacroDroid sul mio telefono Android. Sono poco pratico: rispondi in italiano semplice, dammi UN passo alla volta, indica i pulsanti con il nome esatto che vedo e chiedimi uno screenshot prima di andare avanti. Prima di farmi premere OK sull'indirizzo, chiedimi uno screenshot per controllarlo.
+<div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a creare dei flussi nell'app Automate (di LlamaLab) sul mio telefono Android. Sono poco pratico: rispondi in italiano semplice, dammi UN passo alla volta, indica i pulsanti con il nome esatto che vedo e chiedimi uno screenshot prima di andare avanti.
 
-Ogni macro ha: evento "Notifica ricevuta" (riquadro rosso Eventi) e azione "Apri sito web" (riquadro blu Azioni). Nell'azione: "Parametri di codifica URL" spuntato, tutte le altre caselle vuote. L'indirizzo e':
-https://rich073-debug.github.io/App_Finanze/#fonte=FONTE&amp;titolo={not_title}&amp;notifica={notification}
-{not_title} e {notification} NON si scrivono a mano: si inseriscono con il pulsante "..." scegliendo "Titolo notifica" e "Testo notifica".
+Ogni flusso ha 3 blocchi:
+1. "Flow beginning" (c'e' gia').
+2. "Notification posted?": Proceed = When transition; Package = l'app da ascoltare; Output variables: Title = titolo, Message = testo.
+3. "Content view": nella casella Content URI, con il simbolo fx acceso, l'espressione
+"https://rich073-debug.github.io/App_Finanze/#fonte=FONTE&amp;titolo=" ++ titolo ++ "&amp;notifica=" ++ testo
+e Package = Chrome.
+Collegamenti: GO -> Notification posted?; YES -> Content view; OK di Content view -> di nuovo Notification posted?; NO di Notification posted? -> su se stesso.
 
-Le macro:
-1. Finanze Wallet: app Google Wallet, Contenuto testo "Contiene" il simbolo €, FONTE = wallet.
-2. Finanze Banca: app della mia banca, Contenuto testo "Qualsiasi", FONTE = banca.
-3. Finanze SMS: app Messaggi, Contenuto testo "Contiene" il nome con cui la banca firma gli SMS, FONTE = sms.
-Le macro 2 e 3 si fanno clonando la prima (tieni premuto sulla macro &gt; Clona) e cambiando app, contenuto e FONTE. Dopo il salvataggio l'interruttore della macro deve essere acceso.
-Prova: apri la macro &gt; tre puntini &gt; "Testa azioni": deve aprirsi l'app Finanze in Chrome con "Notifica ignorata (nessun importo trovato)", ed e' corretto.
+I flussi:
+1. Finanze Wallet: Package Google Wallet, FONTE = wallet.
+2. Finanze Banca: Package = l'app della mia banca, FONTE = banca.
+3. Finanze SMS: Package Messaggi, Title (input) = *NomeBanca* con gli asterischi, FONTE = sms.
+Il 2 e il 3 si fanno duplicando il primo (tieni premuto > Duplicate). Ogni flusso va avviato con Start: nell'elenco deve comparire una rotellina a sinistra.
 
 La mia banca e': [nome banca e nome della sua app]
 Mi sono bloccato qui: [descrivi cosa vedi]</pre></div>
@@ -177,14 +201,14 @@ Mi sono bloccato qui: [descrivi cosa vedi]</pre></div>
 <p>Ogni fase qui sopra ha il suo prompt per chi si blocca durante la configurazione. Questo serve dopo, quando è tutto configurato ma un pagamento non viene registrato, compare due volte o l'importo è sbagliato. Prima apri l'app → Impostazioni → <i>Ultime notifiche ricevute</i> e fai uno screenshot: mostra il testo arrivato e cosa ne ha fatto l'app. Non inviare mai numeri completi di carte, PIN o password.</p>
 <div class="prompt"><button onclick="copia(this)">Copia</button><pre>Aiutami a capire perche' un'automazione non funziona. Sono poco pratico: rispondi in italiano semplice e dammi UN controllo alla volta.
 
-Come funziona il sistema: sul mio telefono Android l'app MacroDroid ascolta le notifiche di Google Wallet, della mia banca e dell'app Messaggi. Quando arriva un pagamento apre l'app web Finanze (https://rich073-debug.github.io/App_Finanze/ , in Chrome) con un indirizzo che contiene il testo della notifica dopo il simbolo #. L'app legge importo e negozio e registra la spesa. Se la notifica della banca non contiene l'importo, l'app lo chiede. Se Wallet e banca avvisano per lo stesso pagamento, l'app salta il doppione.
+Come funziona il sistema: sul mio telefono Android l'app Automate (di LlamaLab) ha tre flussi che ascoltano le notifiche di Google Wallet, della mia banca e dell'app Messaggi. Quando arriva un pagamento il blocco "Content view" apre l'app web Finanze (https://rich073-debug.github.io/App_Finanze/ , in Chrome) con un indirizzo che contiene il testo della notifica dopo il simbolo #. L'app legge importo e negozio e registra la spesa. Se la notifica della banca non contiene l'importo, l'app lo chiede. Se Wallet e banca avvisano per lo stesso pagamento, l'app salta il doppione.
 
 Cose da controllare in ordine:
-1. In MacroDroid l'interruttore della macro e' acceso e la macro risulta eseguita.
-2. MacroDroid ha ancora l'accesso alle notifiche e la batteria "Senza restrizioni" (su Xiaomi anche Avvio automatico e lucchetto nelle app recenti).
-3. Nell'evento e' scelta l'app giusta (Google Wallet, l'app della banca, Messaggi).
-4. I link si aprono in Chrome (browser predefinito).
-5. Nell'app Finanze, Impostazioni &gt; "Ultime notifiche ricevute" mostra la notifica e l'esito (registrata, ignorata e perche').
+1. In Automate i flussi hanno la rotellina a sinistra (avviati). Se no, aprirli e premere Start.
+2. Automate ha ancora accesso alle notifiche, "Mostra sopra altre app", batteria "Nessuna restrizione" e "Sospendi se inutilizzata" spento (su Xiaomi anche "Aprire nuove finestre in background" e lucchetto nelle app recenti).
+3. Nel blocco "Notification posted?" e' scelta l'app giusta (Package).
+4. I link si aprono in Chrome.
+5. Nell'app Finanze, Impostazioni > "Ultime notifiche ricevute" mostra la notifica e l'esito.
 Se l'importo non viene riconosciuto con la mia banca, aiutami a descrivere il problema con il testo esatto della notifica (senza dati sensibili) da girare a chi gestisce l'app.
 
 La mia banca e': [nome]
@@ -198,7 +222,7 @@ Il problema: [cosa succede o cosa non succede]</pre></div>
 <p>Se oggi spendi meno, domani hai un po' di più; se sfori, i giorni successivi si abbassano.</p>
 <p><b>Cosa succede quando paghi.</b></p>
 <ol>
-  <li>Paghi con il telefono: Google Wallet manda la notifica, MacroDroid apre l'app e la spesa è registrata con importo e negozio.</li>
+  <li>Paghi con il telefono: Google Wallet manda la notifica, Automate apre l'app e la spesa è registrata con importo e negozio.</li>
   <li>Paghi con la carta fisica: la notifica della banca non sempre contiene l'importo, quindi l'app te lo chiede.</li>
   <li>Se banca e Wallet avvisano per lo stesso pagamento, l'app riconosce il doppione e lo salta.</li>
   <li>Contanti: tocca <b>+ Spesa</b> oppure <b>Detta</b> e di' l'importo. Tenendo premuta l'icona trovi le scorciatoie.</li>
@@ -206,10 +230,10 @@ Il problema: [cosa succede o cosa non succede]</pre></div>
 </ol>
 <p><b>Le sezioni.</b></p>
 <ul>
-  <li><b>Oggi:</b> budget del giorno, riepilogo del periodo, soldi da spostare sui conti di risparmio, quanto deve restare sul conto principale, previsioni (prossimo rifornimento, scadenze in arrivo).</li>
+  <li><b>Oggi:</b> budget del giorno, riepilogo del periodo, soldi messi da parte per le spese future, soldi da spostare sui conti di risparmio, quanto deve restare sul conto principale, previsioni (prossimo rifornimento, scadenze in arrivo).</li>
   <li><b>Movimenti:</b> tutte le spese per giorno e per categoria; tocca una spesa per correggerla o eliminarla.</li>
   <li><b>Fisse:</b> spese mensili, scadenze annuali con accantonamento, entrate extra (trasferte, lavori occasionali).</li>
-  <li><b>Impostazioni:</b> stipendio, obiettivo di risparmio diviso per conto, conti e carte, sicurezza, backup.</li>
+  <li><b>Impostazioni:</b> stipendio, obiettivo di risparmio diviso per conto, conti e carte, sicurezza, backup, aggiornamenti.</li>
 </ul>
 <p><b>Perché è utile.</b></p>
 <ul>
@@ -218,16 +242,19 @@ Il problema: [cosa succede o cosa non succede]</pre></div>
   <li>Il risparmio è deciso a inizio periodo, non "quello che avanza".</li>
   <li>Dopo qualche rifornimento l'app stima quando servirà il prossimo pieno e quanto costerà.</li>
 </ul>
-<p><b>Sicurezza e backup.</b> Con PIN e impronta solo tu apri l'app; le macro registrano le spese anche ad app bloccata. All'inizio di ogni mese l'app propone il backup: salvalo su Google Drive, così non perdi nulla se cambi o perdi il telefono.</p>
+<p><b>Sicurezza e backup.</b> Con PIN e impronta solo tu apri l'app; le spese dalle notifiche si registrano anche ad app bloccata. All'inizio di ogni mese l'app propone il backup: salvalo su Google Drive, così non perdi nulla se cambi o perdi il telefono.</p>
 
 <a class="cta" href="./">Apri l'app Finanze</a>
 </main>
+<div class="zoom" id="zoom" onclick="this.classList.remove('on')"><img id="zoomImg" alt=""></div>
 <script>
 function copia(b){
   const t = b.nextElementSibling.textContent;
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>{ b.textContent='Copiato ✓'; setTimeout(()=>b.textContent='Copia',2000); })
   .catch(()=>{ const r=document.createRange(); r.selectNodeContents(b.nextElementSibling); const s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='Tieni premuto e copia'; });
 }
+// tocca uno screenshot per ingrandirlo
+document.querySelectorAll('figure img').forEach(i=>i.onclick=()=>{ document.getElementById('zoomImg').src=i.src; document.getElementById('zoom').classList.add('on'); });
 </script>
 </body>
 </html>
