@@ -132,7 +132,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
   </div>
 
   <div class="card" id="cardBusta">
-    <h2>Prepagata / PayPal</h2>
+    <h2 id="bustaTitolo">Prepagata / PayPal</h2>
     <div id="bustaBody"></div>
   </div>
 
@@ -190,7 +190,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (2)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (3)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -310,8 +310,22 @@ function defaultState(){
 }
 let S = load();
 function load(){
-  try{ const raw = localStorage.getItem(KEY); if(raw){ const st = Object.assign(defaultState(), JSON.parse(raw)); st.v = Math.max(st.v||1, 3); return st; } }catch(e){}
+  try{ const raw = localStorage.getItem(KEY); if(raw){ const st = Object.assign(defaultState(), JSON.parse(raw)); st.v = Math.max(st.v||1, 3); return migraBusta(st); } }catch(e){}
   return defaultState();
+}
+// v4: la prepagata già usata per la busta viene collegata, e si aggiunge il conto "Saldo PayPal"
+function migraBusta(st){
+  if((st.v||3) >= 4) return st;
+  if(st.busta){
+    const pre = (st.conti||[]).find(c=>c.id==='prepagata' || /prepagat/i.test(c.nome));
+    if(pre){ pre.busta = true; if(st.risparmio) delete st.risparmio[pre.id]; }
+    if(!(st.conti||[]).some(c=>/paypal/i.test(c.nome))) st.conti.push({id:'paypal', nome:'Saldo PayPal', uso:'Pagamenti online', numero:'', busta:true});
+    st.busta.saldi = st.busta.saldi || {};
+    if(pre && st.busta.saldo!==null && st.busta.saldo!==undefined && st.busta.saldi[pre.id]===undefined) st.busta.saldi[pre.id] = st.busta.saldo;
+    if(st.busta.saldi.paypal===undefined && st.busta.saldo!==null && st.busta.saldo!==undefined) st.busta.saldi.paypal = 0;
+  }
+  st.v = 4;
+  return st;
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast('⚠️ Impossibile salvare i dati'); } }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -400,13 +414,16 @@ function dataFissa(f){
   return new Date(i.getFullYear(), i.getMonth()+1, Math.min(f.giorno||1, ultimoGiorno(i.getFullYear(), i.getMonth()+1)));
 }
 function testoGiorno(g){ return g>=28 ? 'fine mese' : 'giorno '+g; }
-function totRisparmio(){ return Object.values(S.risparmio||{}).reduce((s,v)=>s+(+v||0),0); }
+function totRisparmio(){ return Object.entries(S.risparmio||{}).filter(([k])=>!S.conti.find(c=>c.id===k&&c.busta)).reduce((s,[,v])=>s+(+v||0),0); }
 function nomeConto(id){ const c = S.conti.find(x=>x.id===id); return c ? c.nome : id; }
 /* Piano conti: cosa spostare sui conti secondari e cosa deve restare sul conto principale */
 function pianoConti(c){
   const sposta = [];
   S.fisse.filter(f=>f.attiva && f.conto).forEach(f=>sposta.push({key:'f_'+f.id, conto:f.conto, importo:f.importo, motivo:f.nome, entro:dataFissa(f)}));
-  Object.entries(S.risparmio||{}).forEach(([k,v])=>{ if(+v>0) sposta.push({key:'r_'+k, conto:k, importo:+v, motivo:'Obiettivo risparmio'}); });
+  Object.entries(S.risparmio||{}).forEach(([k,v])=>{ if(+v>0 && !S.conti.find(c=>c.id===k&&c.busta)) sposta.push({key:'r_'+k, conto:k, importo:+v, motivo:'Obiettivo risparmio'}); });
+  // ricarica suggerita se nella busta non bastano i soldi per gli abbonamenti in arrivo
+  const av = avvisoBusta(), cbr = contiBusta().find(x=>!/paypal/i.test(x.nome));
+  if(av && av.manca>0 && cbr) sposta.push({key:'b_ricarica', conto:cbr.id, importo:Math.ceil(av.manca), motivo:'Ricarica per gli abbonamenti in arrivo', ricarica:true});
   Object.entries(S.periodo.extraDaParte||{}).forEach(([k,v])=>{ if(+v>0) sposta.push({key:'x_'+k, conto:k, importo:+v, motivo:'Margine extra messo da parte'}); });
   const daSpostare = sposta.filter(s=>!S.periodo.spostati?.[s.key]).reduce((t,s)=>t+s.importo,0);
   // sul conto principale devono restare:
@@ -431,7 +448,29 @@ function toggleSpostato(key){
    Le ricariche escono dal conto principale (e contano nel budget);
    gli acquisti e gli abbonamenti pagati con PayPal escono dalla busta.
    ===================================================================== */
-function busta(){ S.busta = S.busta || {saldo:null, abbonamenti:[], movimenti:[]}; return S.busta; }
+// conti collegati alla busta (es. Prepagata + Saldo PayPal): il saldo della busta è la loro somma
+function contiBusta(){
+  const l = S.conti.filter(c=>c.busta);
+  // PayPal per primo: è il "primo metodo" con cui PayPal paga
+  return l.sort((a,b)=>(/paypal/i.test(b.nome)?1:0)-(/paypal/i.test(a.nome)?1:0));
+}
+function busta(){
+  S.busta = S.busta || {saldo:null, abbonamenti:[], movimenti:[]};
+  const b = S.busta;
+  b.saldi = b.saldi || {};
+  if(b.saldo!==null && b.saldo!==undefined && !Object.keys(b.saldi).length){
+    const c = contiBusta().find(x=>!/paypal/i.test(x.nome)) || contiBusta()[0];
+    if(c) b.saldi[c.id] = b.saldo;
+  }
+  return b;
+}
+function saldoBustaTot(){
+  const b = busta(), ids = contiBusta().map(c=>c.id);
+  if(!ids.length) return b.saldo ?? null;
+  if(!ids.some(id=>b.saldi[id]!==undefined)) return null;
+  return round2(ids.reduce((t,id)=>t+(+b.saldi[id]||0),0));
+}
+function aggiornaSaldoTot(){ const b = busta(); b.saldo = saldoBustaTot(); }
 // "Il tuo acquisto presso Zalando SE" / "Il tuo pagamento di €36,95 EUR è stato completato"
 function analizzaPayPal(titolo, testo){
   const t = ((titolo||'')+' \n '+(testo||'')).trim(), tl = t.toLowerCase();
@@ -446,15 +485,27 @@ function abbonamentoDa(desc){
   const d = (desc||'').toLowerCase();
   return busta().abbonamenti.find(a=>(a.parole||a.nome).toLowerCase().split(',').some(p=>p.trim() && d.includes(p.trim())));
 }
-function movimentoBusta({tipo, importo, desc, manuale}){
-  const b = busta();
+function movimentoBusta({tipo, importo, desc, manuale, conto}){
+  const b = busta(), cb = contiBusta();
   const abb = tipo==='uscita' ? abbonamentoDa(desc) : null;
-  b.movimenti.push({id:uid(), ts:Date.now(), tipo, importo:round2(importo), desc:abb ? abb.nome : desc, abb: abb?abb.id:null});
+  importo = round2(importo);
+  if(cb.length && saldoBustaTot()!==null){
+    if(tipo==='uscita'){
+      // come PayPal: prima il saldo PayPal, poi la carta
+      let resto = importo;
+      cb.forEach((c,i)=>{ if(resto<=0) return; const disp = +b.saldi[c.id]||0; const preso = i===cb.length-1 ? resto : Math.min(resto, Math.max(0,disp)); b.saldi[c.id] = round2(disp - preso); resto = round2(resto - preso); });
+    } else {
+      // ricarica → sulla carta (o sul conto scelto); denaro ricevuto/rimborsi → saldo PayPal
+      const dest = conto || (tipo==='entrata' ? (cb.find(c=>/paypal/i.test(c.nome))||cb[0]).id : (cb.find(c=>!/paypal/i.test(c.nome))||cb[0]).id);
+      b.saldi[dest] = round2((+b.saldi[dest]||0) + importo);
+    }
+  } else if(b.saldo!==null){ b.saldo = round2(b.saldo + (tipo==='uscita' ? -importo : importo)); }
+  b.movimenti.push({id:uid(), ts:Date.now(), tipo, importo, desc:abb ? abb.nome : desc, abb: abb?abb.id:null});
   b.movimenti = b.movimenti.slice(-200);
-  if(b.saldo!==null) b.saldo = round2(b.saldo + (tipo==='uscita' ? -importo : importo));
   if(abb) abb.ultimo = isoDate(today());
-  save(); render();
-  if(!manuale) toast(`${tipo==='uscita'?'💳 PayPal':'＋ PayPal'}: ${fmt(importo)} ${abb?'('+abb.nome+')':desc?'· '+desc:''}${b.saldo!==null?' — sulla prepagata restano circa '+fmt(b.saldo):''}`);
+  aggiornaSaldoTot(); save(); render();
+  const tot = saldoBustaTot();
+  if(!manuale) toast(`${tipo==='uscita'?'💳 PayPal':'＋ PayPal'}: ${fmt(importo)} ${abb?'('+abb.nome+')':desc?'· '+desc:''}${tot!==null?' — nella busta restano circa '+fmt(tot):''}`);
 }
 // prossimo addebito di un abbonamento (giorno del mese)
 function prossimoAddebito(a){
@@ -470,13 +521,16 @@ function avvisoBusta(){
   const prossimi = b.abbonamenti.map(a=>({a, d:prossimoAddebito(a)})).filter(x=>daysBetween(o, x.d) <= entro).sort((x,y)=>x.d-y.d);
   if(!prossimi.length) return null;
   const serve = round2(prossimi.reduce((t,x)=>t+x.a.importo,0));
-  const manca = b.saldo===null ? null : round2(serve - b.saldo);
+  const tot = saldoBustaTot();
+  const manca = tot===null ? null : round2(serve - tot);
   return {prossimi, serve, manca};
 }
-function ricaricaBusta(){
-  openSheet(`<h3>＋ Ricarica prepagata</h3>
+function ricaricaBusta(importo){
+  const cb = contiBusta().filter(c=>!/paypal/i.test(c.nome));
+  openSheet(`<h3>＋ Ricarica</h3>
     <p class="muted">I soldi escono dal conto principale: conta come spesa del periodo. Gli acquisti con PayPal poi non pesano più sul budget, perché sono già coperti.</p>
-    <input class="amount-input" id="rcImp" type="text" inputmode="decimal" placeholder="0,00 €">
+    <input class="amount-input" id="rcImp" type="text" inputmode="decimal" placeholder="0,00 €" value="${importo?String(importo).replace('.',','):''}">
+    ${cb.length>1?`<label>Su quale carta</label><select id="rcConto">${cb.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select>`:''}
     <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="rcBudget" style="width:auto" checked> Conta nel budget di questo periodo</label>
     <button class="btn" style="width:100%;margin-top:14px" onclick="confermaRicarica()">Registra ricarica</button>`);
   setTimeout(()=>document.getElementById('rcImp')?.focus(),150);
@@ -484,18 +538,29 @@ function ricaricaBusta(){
 function confermaRicarica(){
   const v = numeroIt(document.getElementById('rcImp').value.replace('€',''));
   if(!v || isNaN(v)){ toast('Inserisci un importo'); return; }
-  const b = busta(); if(b.saldo===null) b.saldo = 0;
-  movimentoBusta({tipo:'ricarica', importo:v, desc:'Ricarica dal conto', manuale:true});
+  const b = busta(), cb = contiBusta();
+  if(saldoBustaTot()===null){ if(cb.length) cb.forEach(c=>{ if(b.saldi[c.id]===undefined) b.saldi[c.id]=0; }); else b.saldo = 0; }
+  const conto = document.getElementById('rcConto')?.value;
+  movimentoBusta({tipo:'ricarica', importo:v, desc:'Ricarica dal conto', manuale:true, conto});
   if(document.getElementById('rcBudget').checked) S.movimenti.push({id:uid(), ts:Date.now(), importo:round2(v), fonte:'bonifico', desc:'Ricarica prepagata', cat:'Altro', tipo:'var'});
-  save(); closeSheet(); render(); toast('Ricarica registrata: '+fmt(v)+' — saldo circa '+fmt(busta().saldo));
+  S.periodo.spostati = S.periodo.spostati||{}; S.periodo.spostati['b_ricarica'] = true;
+  save(); closeSheet(); render(); toast('Ricarica registrata: '+fmt(v)+' — nella busta circa '+fmt(saldoBustaTot()));
 }
 function saldoBusta(){
-  const b = busta();
-  openSheet(`<h3>Saldo prepagata + PayPal</h3>
-    <p class="muted">Scrivi quanto c'è adesso sulla prepagata (e sul saldo PayPal, se c'è qualcosa). Lo vedi nell'app della banca. Da qui in poi l'app lo aggiorna da sola con ricariche e pagamenti.</p>
-    <input class="amount-input" id="bsSaldo" type="text" inputmode="decimal" placeholder="0,00 €" value="${b.saldo!==null?String(b.saldo).replace('.',','):''}">
-    <button class="btn" style="width:100%;margin-top:14px" onclick="const v=numeroIt(document.getElementById('bsSaldo').value.replace('€',''));if(isNaN(v)){toast('Inserisci un importo');return;}busta().saldo=round2(v);save();closeSheet();render();toast('Saldo impostato')">Salva</button>`);
-  setTimeout(()=>document.getElementById('bsSaldo')?.focus(),150);
+  const b = busta(), cb = contiBusta();
+  const campi = cb.length
+    ? cb.map(c=>`<label>${esc(c.nome)}</label><input id="bs_${c.id}" type="text" inputmode="decimal" placeholder="0,00" value="${b.saldi[c.id]!==undefined?String(b.saldi[c.id]).replace('.',','):''}">`).join('')
+    : `<input class="amount-input" id="bs_unico" type="text" inputmode="decimal" placeholder="0,00 €" value="${b.saldo!==null?String(b.saldo).replace('.',','):''}">`;
+  openSheet(`<h3>Saldo della busta</h3>
+    <p class="muted">Scrivi quanto c'è adesso su ciascuno (lo vedi nell'app della banca e in PayPal). Da qui in poi l'app lo aggiorna da sola con ricariche e pagamenti.</p>
+    ${campi}
+    <button class="btn" style="width:100%;margin-top:14px" onclick="salvaSaldoBusta()">Salva</button>`);
+}
+function salvaSaldoBusta(){
+  const b = busta(), cb = contiBusta();
+  if(cb.length){ cb.forEach(c=>{ const v = numeroIt((document.getElementById('bs_'+c.id).value||'0').replace('€','')); b.saldi[c.id] = isNaN(v)?0:round2(v); }); aggiornaSaldoTot(); }
+  else { const v = numeroIt(document.getElementById('bs_unico').value.replace('€','')); if(isNaN(v)){ toast('Inserisci un importo'); return; } b.saldo = round2(v); }
+  save(); closeSheet(); render(); toast('Saldo impostato');
 }
 function spesaBustaManuale(){
   openSheet(`<h3>Pagamento con PayPal / prepagata</h3>
@@ -522,14 +587,16 @@ function salvaAbbonamento(id){
 }
 function renderBusta(){
   const b = busta(), el = document.getElementById('bustaBody'); if(!el) return;
-  const card = document.getElementById('cardBusta');
-  card.style.display = (b.abbonamenti.length || b.saldo!==null || b.movimenti.length) ? '' : 'none';
+  const card = document.getElementById('cardBusta'), cb = contiBusta(), tot = saldoBustaTot();
+  card.style.display = (b.abbonamenti.length || tot!==null || b.movimenti.length || cb.length) ? '' : 'none';
+  document.getElementById('bustaTitolo').textContent = cb.length ? cb.map(c=>c.nome).join(' + ') : 'Prepagata / PayPal';
   const av = avvisoBusta();
-  let h = `<div class="row"><div class="grow"><div class="t">Saldo stimato</div><div class="s">${b.saldo===null?'<span class="warn">Tocca per inserire il saldo attuale</span>':'Prepagata + saldo PayPal'}</div></div><div class="amt ${b.saldo!==null&&b.saldo<0?'bad':''}" onclick="saldoBusta()" style="cursor:pointer">${b.saldo===null?'—':fmt(b.saldo)} ✎</div></div>`;
+  const dettaglio = cb.length && tot!==null ? cb.map(c=>`${esc(c.nome)} ${fmt(+b.saldi[c.id]||0)}`).join(' · ') : (tot===null ? '<span class="warn">Tocca per inserire il saldo attuale</span>' : 'Prepagata + saldo PayPal');
+  let h = `<div class="row" onclick="saldoBusta()" style="cursor:pointer"><div class="grow"><div class="t">Saldo stimato</div><div class="s">${dettaglio}</div></div><div class="amt ${tot!==null&&tot<0?'bad':''}">${tot===null?'—':fmt(tot)} ✎</div></div>`;
   if(av){
     const elenco = av.prossimi.map(x=>`${esc(x.a.nome)} ${fmt(x.a.importo)} il ${fDate(x.d)}`).join(', ');
     if(av.manca===null) h += `<p class="warn" style="margin:10px 0">⚠️ In arrivo: ${elenco}. Inserisci il saldo per sapere se basta.</p>`;
-    else if(av.manca > 0) h += `<p class="bad" style="margin:10px 0"><b>⚠️ Ricarica almeno ${fmt(Math.ceil(av.manca))}</b>: in arrivo ${elenco}, ma sulla prepagata hai circa ${fmt(b.saldo)}.</p>`;
+    else if(av.manca > 0) h += `<p class="bad" style="margin:10px 0"><b>⚠️ Ricarica almeno ${fmt(Math.ceil(av.manca))}</b>: in arrivo ${elenco}, ma nella busta hai circa ${fmt(tot)}.</p>`;
     else h += `<p class="ok" style="margin:10px 0">✓ In arrivo ${elenco}: il saldo basta.</p>`;
   }
   const ult = [...b.movimenti].sort((x,y)=>y.ts-x.ts).slice(0,4);
@@ -845,7 +912,7 @@ function render(){
   const pc = pianoConti(c);
   document.getElementById('pianoSposta').innerHTML = (pc.sposta.length ? pc.sposta.map(x=>{
     const fatto = S.periodo.spostati?.[x.key];
-    return `<div class="row" onclick="toggleSpostato('${x.key}')"><div class="grow"><div class="t" style="${fatto?'opacity:.5;text-decoration:line-through':''}">${fatto?'✅':'⬜'} ${esc(nomeConto(x.conto))}</div><div class="s">${esc(x.motivo)}${fatto?' · fatto':(x.entro?' · entro il '+fDate(x.entro):'')+' · tocca quando l\'hai spostato'}</div></div><div class="amt">${fmt(x.importo)}</div></div>`;}).join('') : '<div class="empty">Niente da spostare. Imposta l\'obiettivo di risparmio in Impostazioni.</div>')
+    return `<div class="row" onclick="${x.ricarica && !fatto ? `ricaricaBusta(${x.importo})` : `toggleSpostato('${x.key}')`}"><div class="grow"><div class="t" style="${fatto?'opacity:.5;text-decoration:line-through':''}">${fatto?'✅':'⬜'} ${esc(nomeConto(x.conto))}</div><div class="s">${esc(x.motivo)}${fatto?' · fatto':(x.entro?' · entro il '+fDate(x.entro):'')+(x.ricarica?' · tocca per registrarla':' · tocca quando l\'hai spostato')}</div></div><div class="amt">${fmt(x.importo)}</div></div>`;}).join('') : '<div class="empty">Niente da spostare. Imposta l\'obiettivo di risparmio in Impostazioni.</div>')
     + (pc.daSpostare>0 ? `<div class="row"><div class="grow"><b>Ancora da spostare</b></div><div class="amt warn">${fmt(pc.daSpostare)}</div></div>` : '');
   document.getElementById('pianoResta').innerHTML =
     `<div class="row"><div class="grow"><div class="t">Spese fisse ancora da addebitare</div><div class="s">${pc.fisseDaPagare.map(f=>esc(f.nome)+' il '+fDate(dataFissa(f))).join(', ')||'Tutte già addebitate'}</div></div><div class="amt">${fmt(pc.fissePrincipale)}</div></div>
@@ -915,8 +982,9 @@ function render(){
   document.getElementById('ultimoBk').textContent = S.ultimoBackup ? 'Ultimo backup: '+new Date(S.ultimoBackup).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : 'Nessun backup ancora fatto';
   if(vista==='imp' && document.activeElement?.tagName!=='INPUT'){
     document.getElementById('iStip').value = S.impostazioni.stipendio;
-    document.getElementById('iRispConti').innerHTML = S.conti.map(k=>
-      `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="flex:1">${esc(k.nome)} <span class="muted">(${esc(k.uso)})</span></span><input style="width:110px" type="number" inputmode="decimal" data-conto="${k.id}" value="${+(S.risparmio||{})[k.id]||0}"></div>`).join('');
+    document.getElementById('iRispConti').innerHTML = S.conti.map(k=> k.busta
+      ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="flex:1">${esc(k.nome)} <span class="muted">(collegato alla busta)</span></span><span class="muted" style="width:110px;text-align:right">saldo ${fmt(+(busta().saldi||{})[k.id]||0)}</span></div>`
+      : `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="flex:1">${esc(k.nome)} <span class="muted">(${esc(k.uso)})</span></span><input style="width:110px" type="number" inputmode="decimal" data-conto="${k.id}" value="${+(S.risparmio||{})[k.id]||0}"></div>`).join('');
     document.getElementById('iCarte').value = S.impostazioni.carte||'';
     document.getElementById('iPrinc').value = S.impostazioni.contoPrincipale||'';
     document.getElementById('iFine').value = S.impostazioni.giornoFine;
@@ -1156,13 +1224,15 @@ function editConto(id){
     <label>Nome</label><input id="kNome" value="${esc(k.nome)}" placeholder="es. Revolut">
     <label>A cosa serve</label><input id="kUso" value="${esc(k.uso)}" placeholder="es. Vacanze">
     <label>Numeri di conto o carte (ultime cifre, separate da virgola)</label><input id="kNum" value="${esc(k.numero||'')}" placeholder="es. 123 oppure 4567, 890">
+    <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="kBusta" style="width:auto" ${k.busta?'checked':''}> Collegato alla busta Prepagata / PayPal (il suo saldo si somma)</label>
     <div class="grid2" style="margin-top:18px">${id?`<button class="btn danger" onclick="S.conti=S.conti.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaConto('${id||''}')">Salva</button></div>`);
 }
 function salvaConto(id){
   const nome = document.getElementById('kNome').value.trim(); if(!nome){ toast('Inserisci un nome'); return; }
-  const dati = {nome, uso:document.getElementById('kUso').value.trim(), numero:document.getElementById('kNum').value.trim()};
+  const dati = {nome, uso:document.getElementById('kUso').value.trim(), numero:document.getElementById('kNum').value.trim(), busta:document.getElementById('kBusta').checked};
   if(id) Object.assign(S.conti.find(x=>x.id===id), dati); else S.conti.push({id:uid(), ...dati});
-  save(); closeSheet(); render();
+  if(dati.busta && S.risparmio && id) delete S.risparmio[id];
+  aggiornaSaldoTot(); save(); closeSheet(); render();
 }
 function editCategoria(nome){
   const esiste = nome !== undefined, prot = esiste && CAT_PROTETTE.includes(nome);
