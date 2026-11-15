@@ -190,7 +190,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (2)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -211,6 +211,12 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
   <div class="card">
     <h2>Sicurezza</h2>
     <div id="secStato"></div>
+  </div>
+  <div class="card">
+    <h2>Categorie</h2>
+    <p class="muted" style="margin-top:0">Tocca una categoria per rinominarla o eliminarla, o per aggiungere parole che la fanno scegliere da sola (es. "decathlon" → Sport).</p>
+    <div id="catList"></div>
+    <button class="btn sec small" style="margin-top:10px" onclick="editCategoria()">＋ Aggiungi categoria</button>
   </div>
   <div class="card">
     <h2>I miei conti</h2>
@@ -274,7 +280,9 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
    DATI
    ===================================================================== */
 const KEY = 'finanze_v1';
-const CATEGORIE = ['Generale','Spesa','Carburante','Ristorante','Casa','Salute','Svago','Altro'];
+const CATEGORIE_BASE = ['Generale','Spesa','Carburante','Ristorante','Casa','Salute','Svago','Altro'];
+const CAT_PROTETTE = ['Generale','Carburante']; // Generale = predefinita, Carburante = serve alla stima dei rifornimenti
+function categorie(){ return (S.categorie && S.categorie.length) ? S.categorie : CATEGORIE_BASE; }
 const CAT_KEYWORDS = {
   Carburante:['eni','q8','tamoil','esso','ip ','api ','carbur','benzin','distributore','agip','total','repsol','petrol','fuel','energas','enilive'],
   Spesa:['supermerc','conad','coop','esselunga','lidl','eurospin','carrefour','gala','pam','md ','despar','iper','tigre','todis','penny','aldi','famila','sigma','crai','a&o','simply'],
@@ -551,7 +559,9 @@ function previsioneCarburante(){
    ===================================================================== */
 function indovinaCategoria(desc){
   const d = ' '+(desc||'').toLowerCase()+' ';
-  for(const [cat,kws] of Object.entries(CAT_KEYWORDS)) if(kws.some(k=>d.includes(k))) return cat;
+  // prima le parole scelte da te, poi quelle già previste
+  for(const [cat,parole] of Object.entries(S.catParole||{})) if(categorie().includes(cat) && String(parole).split(',').some(k=>k.trim() && d.includes(k.trim().toLowerCase()))) return cat;
+  for(const [cat,kws] of Object.entries(CAT_KEYWORDS)) if(categorie().includes(cat) && kws.some(k=>d.includes(k))) return cat;
   return 'Generale';
 }
 // riconosce se un pagamento corrisponde a una spesa fissa o annuale
@@ -900,6 +910,8 @@ function render(){
   document.getElementById('logNotif').innerHTML = (S.logNotifiche||[]).slice().reverse().map(l=>`<div class="row" style="display:block"><div class="s">${new Date(l.ts).toLocaleString('it-IT')} ${l.fonte?'· '+esc(l.fonte):''}</div><div style="font-size:13.5px">${esc(l.titolo)} — ${esc(l.testo)}</div><div class="s ok">→ ${esc(l.esito||'')}</div></div>`).join('') || '<div class="empty">Ancora nessuna</div>';
   // ---- IMPOSTAZIONI
   renderSicurezza();
+  document.getElementById('catList').innerHTML = categorie().map(k=>{ const n = S.movimenti.filter(m=>m.cat===k).length, par = (S.catParole||{})[k];
+    return `<div class="row" onclick="editCategoria(this.dataset.n)" data-n="${esc(k)}"><div class="grow"><div class="t">${esc(k)}${CAT_PROTETTE.includes(k)?' <span class="tag">fissa</span>':''}</div><div class="s">${n} moviment${n===1?'o':'i'}${par?' · parole: '+esc(par):''}</div></div><div class="amt">›</div></div>`; }).join('');
   document.getElementById('ultimoBk').textContent = S.ultimoBackup ? 'Ultimo backup: '+new Date(S.ultimoBackup).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : 'Nessun backup ancora fatto';
   if(vista==='imp' && document.activeElement?.tagName!=='INPUT'){
     document.getElementById('iStip').value = S.impostazioni.stipendio;
@@ -926,7 +938,7 @@ function openAdd(){
     <input class="amount-input" id="aImp" type="text" inputmode="decimal" placeholder="0,00 €" autocomplete="off">
     <label>Descrizione (facoltativa)</label><input id="aDesc" placeholder="es. caffè, benzina…" oninput="autoCat(this.value)">
     <label>Pagata con</label><div class="chips" id="aFonti">${['contanti','carta','wallet'].map(f=>`<button class="chip ${f===addFonte?'on':''}" data-f="${f}">${FONTE_ICO[f]} ${f}</button>`).join('')}</div>
-    <label>Categoria</label><div class="chips" id="aCats">${CATEGORIE.map(k=>`<button class="chip ${k===addCat?'on':''}" data-c="${k}">${k}</button>`).join('')}</div>
+    <label>Categoria</label><div class="chips" id="aCats">${categorie().map(k=>`<button class="chip ${k===addCat?'on':''}" data-c="${k}">${k}</button>`).join('')}</div>
     <button class="btn" style="width:100%;margin-top:18px" onclick="salvaAdd()">Registra</button>`);
   wireChips();
   setTimeout(()=>document.getElementById('aImp').focus(),100);
@@ -956,7 +968,7 @@ function editMov(id){
       <option value="fissa" ${m.tipo==='fissa'?'selected':''}>Spesa fissa (già considerata)</option>
       <option value="annuale" ${m.tipo==='annuale'?'selected':''}>Scadenza annuale (già accantonata)</option>
       <option value="giro" ${m.tipo==='giro'?'selected':''}>Esclusa (giroconto, risparmio…)</option></select>
-    <label>Categoria</label><div class="chips" id="aCats">${CATEGORIE.map(k=>`<button class="chip ${k===addCat?'on':''}" data-c="${k}">${k}</button>`).join('')}</div>
+    <label>Categoria</label><div class="chips" id="aCats">${categorie().map(k=>`<button class="chip ${k===addCat?'on':''}" data-c="${k}">${k}</button>`).join('')}</div>
     <div class="grid2" style="margin-top:18px"><button class="btn danger" onclick="eliminaMovimento('${id}');closeSheet()">Elimina</button><button class="btn" onclick="salvaMov('${id}')">Salva</button></div>`);
   wireChips();
 }
@@ -1152,6 +1164,45 @@ function salvaConto(id){
   if(id) Object.assign(S.conti.find(x=>x.id===id), dati); else S.conti.push({id:uid(), ...dati});
   save(); closeSheet(); render();
 }
+function editCategoria(nome){
+  const esiste = nome !== undefined, prot = esiste && CAT_PROTETTE.includes(nome);
+  openSheet(`<h3>${esiste?'Modifica':'Nuova'} categoria</h3>
+    <label>Nome</label><input id="ctNome" value="${esiste?esc(nome):''}" ${prot?'disabled':''} placeholder="es. Sport, Animali, Regali">
+    ${prot?'<p class="muted">Questa categoria non si può rinominare né eliminare: la usa l\'app.</p>':''}
+    <label>Parole per sceglierla da sola (separate da virgola)</label><input id="ctParole" value="${esiste?esc((S.catParole||{})[nome]||''):''}" placeholder="es. decathlon, palestra">
+    <div class="grid2" style="margin-top:18px">${esiste&&!prot?`<button class="btn danger" onclick="eliminaCategoria(this.dataset.n)" data-n="${esc(nome)}">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaCategoria(this.dataset.n)" data-n="${esiste?esc(nome):''}">Salva</button></div>`);
+}
+function salvaCategoria(vecchio){
+  const nuovo = (document.getElementById('ctNome').value||vecchio||'').trim(), parole = document.getElementById('ctParole').value.trim();
+  if(!nuovo){ toast('Inserisci un nome'); return; }
+  const lista = [...categorie()];
+  if(vecchio){
+    if(nuovo!==vecchio){
+      if(lista.includes(nuovo)){ toast('Esiste già'); return; }
+      lista[lista.indexOf(vecchio)] = nuovo;
+      S.movimenti.forEach(m=>{ if(m.cat===vecchio) m.cat = nuovo; });
+      if(S.catParole && S.catParole[vecchio]!==undefined){ S.catParole[nuovo] = S.catParole[vecchio]; delete S.catParole[vecchio]; }
+    }
+  } else {
+    if(lista.includes(nuovo)){ toast('Esiste già'); return; }
+    lista.splice(Math.max(0, lista.indexOf('Altro')), 0, nuovo); // prima di "Altro"
+  }
+  S.categorie = lista;
+  S.catParole = S.catParole||{}; if(parole) S.catParole[nuovo] = parole; else delete S.catParole[nuovo];
+  save(); closeSheet(); render(); toast('Categoria salvata');
+}
+function eliminaCategoria(nome){
+  const n = S.movimenti.filter(m=>m.cat===nome).length;
+  openSheet(`<h3>Eliminare "${esc(nome)}"?</h3><p class="muted">${n?`I ${n} movimenti di questa categoria passano in "Generale".`:'Non ci sono movimenti in questa categoria.'}</p>
+    <div class="grid2" style="margin-top:16px"><button class="btn sec" onclick="closeSheet()">Annulla</button><button class="btn danger" onclick="confermaEliminaCategoria(this.dataset.n)" data-n="${esc(nome)}">Elimina</button></div>`);
+}
+function confermaEliminaCategoria(nome){
+  S.categorie = categorie().filter(k=>k!==nome);
+  S.movimenti.forEach(m=>{ if(m.cat===nome) m.cat = 'Generale'; });
+  if(S.catParole) delete S.catParole[nome];
+  save(); closeSheet(); render(); toast('Categoria eliminata');
+}
+
 function salvaImpostazioni(){
   const st = numeroIt(document.getElementById('iStip').value), gf = parseInt(document.getElementById('iFine').value);
   if(!isNaN(st)) S.impostazioni.stipendio = st;
