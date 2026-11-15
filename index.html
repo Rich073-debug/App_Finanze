@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (5)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (6)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -460,6 +460,7 @@ function editSaldoConto(id){
   openSheet(`<h3>Saldo · ${esc(c.nome)}</h3>
     <p class="muted">Scrivi quanto c'è adesso. Da qui in poi l'app lo aggiorna da sola quando sposti dei soldi su questo conto${c.busta?' o paghi con PayPal':''}; tu puoi correggerlo quando vuoi.</p>
     <input class="amount-input" id="scVal" type="text" inputmode="decimal" placeholder="0,00 €" value="${v!==undefined&&v!==null?String(v).replace('.',','):''}">
+    <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="scNasc" style="width:auto" ${c.nascosto?'checked':''}> Nascondi questo saldo</label>
     <button class="btn" style="width:100%;margin-top:14px" onclick="salvaSaldoConto(this.dataset.id)" data-id="${esc(id)}">Salva</button>`);
   setTimeout(()=>document.getElementById('scVal')?.select(),150);
 }
@@ -467,17 +468,23 @@ function salvaSaldoConto(id){
   const c = S.conti.find(x=>x.id===id); const v = numeroIt(document.getElementById('scVal').value.replace('€',''));
   if(isNaN(v)){ toast('Inserisci un importo'); return; }
   if(c.busta){ busta().saldi[id] = round2(v); aggiornaSaldoTot(); } else { c.saldo = round2(v); c.saldoTs = Date.now(); }
+  c.nascosto = document.getElementById('scNasc').checked;
   save(); closeSheet(); render(); toast('Saldo aggiornato');
 }
+// saldi nascosti: si vedono solo toccando l'occhio (fino a quando chiudi l'app)
+let mostraNascosti = false;
+const MASCHERA = '<span class="muted">•••• €</span>';
 function renderSaldi(){
   const el = document.getElementById('saldiBody'); if(!el) return;
   const pr = S.periodo.saldo;
-  const righe = [{nome:'Conto principale', uso:pr ? 'aggiornato il '+fDate(new Date(pr.ts))+' · tocca per allineare' : 'tocca per inserire il saldo', v: pr ? pr.valore : null, click:'allineaSaldo()'}]
+  const righe = [{nome:'Conto principale', uso:pr ? 'aggiornato il '+fDate(new Date(pr.ts))+' · tocca per allineare' : 'tocca per inserire il saldo', v: pr ? pr.valore : null, click:'allineaSaldo()', nascosto:!!S.impostazioni.nascondiPrincipale}]
     .concat(S.conti.map(c=>{ const v = saldoConto(c);
-      return {nome:c.nome, uso:(c.uso||'')+(c.busta?' · si aggiorna con PayPal':(c.saldoTs?' · aggiornato il '+fDate(new Date(c.saldoTs)):'')), v:(v===undefined?null:v), click:`editSaldoConto('${c.id}')`}; }));
-  const noti = righe.filter(r=>r.v!==null);
-  el.innerHTML = righe.map(r=>`<div class="row" onclick="${r.click}" style="cursor:pointer"><div class="grow"><div class="t">${esc(r.nome)}</div><div class="s">${esc(r.uso)}</div></div><div class="amt ${r.v!==null&&r.v<0?'bad':''}">${r.v===null?'<span class="muted">—</span>':fmt(r.v)}</div></div>`).join('')
-    + `<div class="row"><div class="grow"><b>Totale</b><div class="s">${noti.length<righe.length?((righe.length-noti.length)===1?'Manca 1 saldo: toccalo per inserirlo':'Mancano '+(righe.length-noti.length)+' saldi: toccali per inserirli'):'Tutto quello che hai'}</div></div><div class="amt ok">${fmt(noti.reduce((t,r)=>t+r.v,0))}</div></div>`;
+      return {nome:c.nome, uso:(c.uso||'')+(c.busta?' · si aggiorna con PayPal':(c.saldoTs?' · aggiornato il '+fDate(new Date(c.saldoTs)):'')), v:(v===undefined?null:v), click:`editSaldoConto('${c.id}')`, nascosto:!!c.nascosto}; }));
+  const noti = righe.filter(r=>r.v!==null), ciSonoNascosti = righe.some(r=>r.nascosto);
+  const mostra = r => r.v===null ? '<span class="muted">—</span>' : (r.nascosto && !mostraNascosti ? MASCHERA : fmt(r.v));
+  el.innerHTML = (ciSonoNascosti ? `<button class="btn sec small" style="width:100%;margin-bottom:6px" onclick="mostraNascosti=!mostraNascosti;render()">${mostraNascosti?'🙈 Nascondi di nuovo':'👁 Mostra i saldi nascosti'}</button>` : '')
+    + righe.map(r=>`<div class="row" onclick="${r.click}" style="cursor:pointer"><div class="grow"><div class="t">${esc(r.nome)}${r.nascosto?' <span class="tag">nascosto</span>':''}</div><div class="s">${esc(r.uso)}</div></div><div class="amt ${r.v!==null&&r.v<0&&(!r.nascosto||mostraNascosti)?'bad':''}">${mostra(r)}</div></div>`).join('')
+    + `<div class="row"><div class="grow"><b>Totale</b><div class="s">${noti.length<righe.length?((righe.length-noti.length)===1?'Manca 1 saldo: toccalo per inserirlo':'Mancano '+(righe.length-noti.length)+' saldi: toccali per inserirli'):'Tutto quello che hai'}</div></div><div class="amt ok">${ciSonoNascosti && !mostraNascosti ? MASCHERA : fmt(noti.reduce((t,r)=>t+r.v,0))}</div></div>`;
 }
 
 /* =====================================================================
@@ -1014,7 +1021,7 @@ function render(){
   document.getElementById('entrateList').innerHTML = entrateP.length ? entrateP.map(e=>
     `<div class="row" onclick="editEntrata('${e.id}')"><div class="grow"><div class="t">${esc(e.nota||'Entrata')}</div><div class="s">${parseDate(e.data).toLocaleDateString('it-IT')}${parseDate(e.data)>=c.inizio?' · in questo periodo':''}</div></div><div class="amt ok">+${fmt(e.importo)}</div></div>`).join('') : '<div class="empty">Nessuna entrata extra</div>';
 
-  document.getElementById('contiList').innerHTML = S.conti.map(k=>`<div class="row" onclick="editConto('${k.id}')"><div class="grow"><div class="t">${esc(k.nome)}</div><div class="s">${esc(k.uso||'')}${k.numero?' · n. '+esc(k.numero):''}</div></div><div class="amt">${(()=>{ const v = saldoConto(k); return v!==undefined&&v!==null ? fmt(v) : '<span class="muted">saldo —</span>'; })()} ›</div></div>`).join('');
+  document.getElementById('contiList').innerHTML = S.conti.map(k=>`<div class="row" onclick="editConto('${k.id}')"><div class="grow"><div class="t">${esc(k.nome)}</div><div class="s">${esc(k.uso||'')}${k.numero?' · n. '+esc(k.numero):''}</div></div><div class="amt">${(()=>{ const v = saldoConto(k); return v!==undefined&&v!==null ? (k.nascosto ? MASCHERA : fmt(v)) : '<span class="muted">saldo —</span>'; })()} ›</div></div>`).join('');
   document.getElementById('logNotif').innerHTML = (S.logNotifiche||[]).slice().reverse().map(l=>`<div class="row" style="display:block"><div class="s">${new Date(l.ts).toLocaleString('it-IT')} ${l.fonte?'· '+esc(l.fonte):''}</div><div style="font-size:13.5px">${esc(l.titolo)} — ${esc(l.testo)}</div><div class="s ok">→ ${esc(l.esito||'')}</div></div>`).join('') || '<div class="empty">Ancora nessuna</div>';
   // ---- IMPOSTAZIONI
   renderSicurezza();
@@ -1179,6 +1186,7 @@ function allineaSaldo(){
     <p class="muted">L'app non vede il conto: ricostruisce il saldo da stipendio e spese. Scrivi quanto hai davvero sul conto principale (lo vedi nell'app della banca) e sistemiamo la differenza.</p>
     <label>Saldo reale del conto principale (€)</label>
     <input class="amount-input" id="sdReale" type="text" inputmode="decimal" placeholder="0,00 €" oninput="anteprimaSaldo()">
+    <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" style="width:auto" ${S.impostazioni.nascondiPrincipale?'checked':''} onchange="S.impostazioni.nascondiPrincipale=this.checked;save();render()"> Nascondi il saldo del conto principale in "I miei conti"</label>
     <div id="sdEsito" style="margin-top:12px"></div>`);
   setTimeout(()=>document.getElementById('sdReale')?.focus(),150);
 }
@@ -1265,12 +1273,13 @@ function editConto(id){
     <label>A cosa serve</label><input id="kUso" value="${esc(k.uso)}" placeholder="es. Vacanze">
     <label>Numeri di conto o carte (ultime cifre, separate da virgola)</label><input id="kNum" value="${esc(k.numero||'')}" placeholder="es. 123 oppure 4567, 890">
     <label>Saldo attuale (€)</label><input id="kSaldo" type="text" inputmode="decimal" placeholder="es. 1200" value="${(()=>{ const v = k.busta ? (busta().saldi||{})[k.id] : k.saldo; return v!==undefined&&v!==null ? String(v).replace('.',',') : ''; })()}">
+    <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="kNascosto" style="width:auto" ${k.nascosto?'checked':''}> Nascondi il saldo (si vede solo toccando 👁)</label>
     <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="kBusta" style="width:auto" ${k.busta?'checked':''}> Collegato alla busta Prepagata / PayPal (il suo saldo si somma)</label>
     <div class="grid2" style="margin-top:18px">${id?`<button class="btn danger" onclick="S.conti=S.conti.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaConto('${id||''}')">Salva</button></div>`);
 }
 function salvaConto(id){
   const nome = document.getElementById('kNome').value.trim(); if(!nome){ toast('Inserisci un nome'); return; }
-  const dati = {nome, uso:document.getElementById('kUso').value.trim(), numero:document.getElementById('kNum').value.trim(), busta:document.getElementById('kBusta').checked};
+  const dati = {nome, uso:document.getElementById('kUso').value.trim(), numero:document.getElementById('kNum').value.trim(), busta:document.getElementById('kBusta').checked, nascosto:document.getElementById('kNascosto').checked};
   if(id) Object.assign(S.conti.find(x=>x.id===id), dati); else { id = uid(); S.conti.push({id, ...dati}); }
   if(dati.busta && S.risparmio) delete S.risparmio[id];
   const sv = document.getElementById('kSaldo').value.trim();
@@ -1554,7 +1563,7 @@ if(!bloccato){ primoAvvio(); controllaBackup(); } else inAttesa.push(primoAvvio,
 window.addEventListener('hashchange', ()=>{ S = load(); gestisciURL(); });
 // aggiorna a mezzanotte / quando torni sull'app
 document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden){ nascostoDa = Date.now(); return; }
+  if(document.hidden){ nascostoDa = Date.now(); mostraNascosti = false; return; }
   if(attivo() && !bloccato && Date.now()-nascostoDa >= (SEC.ritardo ?? 60000)) blocca();
   S = load(); render();
   if(!bloccato && !document.getElementById('sheetBg').classList.contains('on')) controllaBackup();
