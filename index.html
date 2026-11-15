@@ -131,6 +131,11 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <div id="pianoResta"></div>
   </div>
 
+  <div class="card" id="cardSaldi">
+    <h2>I miei conti</h2>
+    <div id="saldiBody"></div>
+  </div>
+
   <div class="card" id="cardBusta">
     <h2 id="bustaTitolo">Prepagata / PayPal</h2>
     <div id="bustaBody"></div>
@@ -190,16 +195,16 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (3)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (4)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
     <h2>Budget</h2>
     <label>Stipendio fisso mensile (€)</label>
     <input type="number" inputmode="decimal" step="0.01" id="iStip">
-    <label>Obiettivo di risparmio di questo periodo, diviso per conto (€)</label>
+    <label>Risparmio mensile da mettere da parte (facoltativo, €)</label>
     <div id="iRispConti"></div>
-    <p class="muted">Questi soldi vengono tolti dal budget e compaiono in "Soldi da spostare". Il PAC verso il libretto è già tra le spese fisse.</p>
+    <p class="muted">Non è il saldo: è quanto vuoi spostare ogni mese su questi conti. Viene tolto dal budget e compare in "Soldi da spostare". Lascia 0 se non ti serve. I saldi dei conti li trovi in <b>Oggi → I miei conti</b>.</p>
     <label>Carte del conto principale (ultime cifre, separate da virgola)</label>
     <input id="iCarte" placeholder="es. 1234">
     <p class="muted">I pagamenti con altre carte (Revolut, Postepay, prepagata) vengono ignorati: non pesano sul budget.</p>
@@ -437,7 +442,42 @@ function pianoConti(c){
 function toggleSpostato(key){
   S.periodo.spostati = S.periodo.spostati||{};
   S.periodo.spostati[key] = !S.periodo.spostati[key];
+  // se conosci il saldo del conto di destinazione, si aggiorna da solo (spunta = +, togli spunta = −)
+  const voce = pianoConti(calcola()).sposta.find(x=>x.key===key);
+  if(voce) aggiungiSaldoConto(voce.conto, S.periodo.spostati[key] ? voce.importo : -voce.importo);
   save(); render();
+}
+/* ---------------- saldi dei conti ---------------- */
+function saldoConto(c){ return c.busta ? (busta().saldi||{})[c.id] : c.saldo; }
+function aggiungiSaldoConto(id, importo){
+  const c = S.conti.find(x=>x.id===id); if(!c) return;
+  if(c.busta){ const b = busta(); if(b.saldi[id]!==undefined){ b.saldi[id] = round2(b.saldi[id] + importo); aggiornaSaldoTot(); } return; }
+  if(c.saldo!==undefined && c.saldo!==null){ c.saldo = round2(c.saldo + importo); c.saldoTs = Date.now(); }
+}
+function editSaldoConto(id){
+  const c = S.conti.find(x=>x.id===id); if(!c) return;
+  const v = saldoConto(c);
+  openSheet(`<h3>Saldo · ${esc(c.nome)}</h3>
+    <p class="muted">Scrivi quanto c'è adesso. Da qui in poi l'app lo aggiorna da sola quando sposti dei soldi su questo conto${c.busta?' o paghi con PayPal':''}; tu puoi correggerlo quando vuoi.</p>
+    <input class="amount-input" id="scVal" type="text" inputmode="decimal" placeholder="0,00 €" value="${v!==undefined&&v!==null?String(v).replace('.',','):''}">
+    <button class="btn" style="width:100%;margin-top:14px" onclick="salvaSaldoConto(this.dataset.id)" data-id="${esc(id)}">Salva</button>`);
+  setTimeout(()=>document.getElementById('scVal')?.select(),150);
+}
+function salvaSaldoConto(id){
+  const c = S.conti.find(x=>x.id===id); const v = numeroIt(document.getElementById('scVal').value.replace('€',''));
+  if(isNaN(v)){ toast('Inserisci un importo'); return; }
+  if(c.busta){ busta().saldi[id] = round2(v); aggiornaSaldoTot(); } else { c.saldo = round2(v); c.saldoTs = Date.now(); }
+  save(); closeSheet(); render(); toast('Saldo aggiornato');
+}
+function renderSaldi(){
+  const el = document.getElementById('saldiBody'); if(!el) return;
+  const pr = S.periodo.saldo;
+  const righe = [{nome:'Conto principale', uso:pr ? 'aggiornato il '+fDate(new Date(pr.ts))+' · tocca per allineare' : 'tocca per inserire il saldo', v: pr ? pr.valore : null, click:'allineaSaldo()'}]
+    .concat(S.conti.map(c=>{ const v = saldoConto(c);
+      return {nome:c.nome, uso:(c.uso||'')+(c.busta?' · si aggiorna con PayPal':(c.saldoTs?' · aggiornato il '+fDate(new Date(c.saldoTs)):'')), v:(v===undefined?null:v), click:`editSaldoConto('${c.id}')`}; }));
+  const noti = righe.filter(r=>r.v!==null);
+  el.innerHTML = righe.map(r=>`<div class="row" onclick="${r.click}" style="cursor:pointer"><div class="grow"><div class="t">${esc(r.nome)}</div><div class="s">${esc(r.uso)}</div></div><div class="amt ${r.v!==null&&r.v<0?'bad':''}">${r.v===null?'<span class="muted">—</span>':fmt(r.v)}</div></div>`).join('')
+    + `<div class="row"><div class="grow"><b>Totale</b><div class="s">${noti.length<righe.length?((righe.length-noti.length)===1?'Manca 1 saldo: toccalo per inserirlo':'Mancano '+(righe.length-noti.length)+' saldi: toccali per inserirli'):'Tutto quello che hai'}</div></div><div class="amt ok">${fmt(noti.reduce((t,r)=>t+r.v,0))}</div></div>`;
 }
 
 /* =====================================================================
@@ -671,7 +711,7 @@ function aggiungiMovimento({importo, fonte='contanti', desc='', cat=null, tipo=n
   const c = calcola();
   if(bloccato) toast('✓ Spesa registrata');
   else if(tipo==='var') toast(`✓ ${fmt(importo)} — oggi ti restano ${fmt(c.residuoOggi)}`, 'Annulla', ()=>eliminaMovimento(m.id));
-  else toast(`✓ ${fmt(importo)} registrata come spesa ${tipo==='fissa'?'fissa':'annuale'} (non tocca il budget giornaliero)`, 'Annulla', ()=>eliminaMovimento(m.id));
+  else toast(tipo==='giro' ? `✓ ${fmt(importo)} spostati tra i tuoi conti (non toccano il budget)` : `✓ ${fmt(importo)} registrata come spesa ${tipo==='fissa'?'fissa':'annuale'} (non tocca il budget giornaliero)`, 'Annulla', ()=>eliminaMovimento(m.id));
   return m;
 }
 function eliminaMovimento(id){ S.movimenti = S.movimenti.filter(m=>m.id!==id); save(); render(); }
@@ -785,9 +825,9 @@ function eseguiNotifica(titolo, testo, fonteHint){
   else if(r.azione==='bonifico'){
     const f = S.fisse.find(x=>x.attiva && x.conto && (!r.verso || x.conto===r.verso) && Math.abs(x.importo-r.importo)<0.01 && !S.periodo.spostati?.['f_'+x.id]);
     const rk = Object.keys(S.risparmio||{}).find(k=>(!r.verso || k===r.verso) && Math.abs((+S.risparmio[k]||0)-r.importo)<0.01 && !S.periodo.spostati?.['r_'+k]);
-    if(f) aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:f.nome+' → '+nomeConto(f.conto), tipo:'fissa', forza:true}) && (S.movimenti[S.movimenti.length-1].rif=f.id, S.periodo.spostati['f_'+f.id]=true, save(), render());
-    else if(rk){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.spostati['r_'+rk]=true; aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:'Risparmio → '+nomeConto(rk), tipo:'giro', forza:true}); }
-    else if(r.verso) aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:r.desc, tipo:'giro', forza:true});
+    if(f) aggiungiSaldoConto(f.conto, r.importo), aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:f.nome+' → '+nomeConto(f.conto), tipo:'fissa', forza:true}) && (S.movimenti[S.movimenti.length-1].rif=f.id, S.periodo.spostati['f_'+f.id]=true, save(), render());
+    else if(rk){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.spostati['r_'+rk]=true; aggiungiSaldoConto(rk, r.importo); aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:'Risparmio → '+nomeConto(rk), tipo:'giro', forza:true}); }
+    else if(r.verso){ aggiungiSaldoConto(r.verso, r.importo); aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:r.desc, tipo:'giro', forza:true}); }
     else chiediBonifico(r.importo, r.desc);
   }
   else if(r.azione==='chiediImporto') chiediImporto(r.desc, r.fonte);
@@ -942,6 +982,7 @@ function render(){
   document.getElementById('ultimi').innerHTML = ult.length ? ult.map(rigaMov).join('') : '<div class="empty">Nessuna spesa registrata. Tocca "＋ Spesa" per iniziare.</div>';
 
   renderBusta();
+  renderSaldi();
 
   // ---- MOVIMENTI
   let lista = [...S.movimenti].sort((a,b)=>b.ts-a.ts);
@@ -982,9 +1023,8 @@ function render(){
   document.getElementById('ultimoBk').textContent = S.ultimoBackup ? 'Ultimo backup: '+new Date(S.ultimoBackup).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : 'Nessun backup ancora fatto';
   if(vista==='imp' && document.activeElement?.tagName!=='INPUT'){
     document.getElementById('iStip').value = S.impostazioni.stipendio;
-    document.getElementById('iRispConti').innerHTML = S.conti.map(k=> k.busta
-      ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="flex:1">${esc(k.nome)} <span class="muted">(collegato alla busta)</span></span><span class="muted" style="width:110px;text-align:right">saldo ${fmt(+(busta().saldi||{})[k.id]||0)}</span></div>`
-      : `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="flex:1">${esc(k.nome)} <span class="muted">(${esc(k.uso)})</span></span><input style="width:110px" type="number" inputmode="decimal" data-conto="${k.id}" value="${+(S.risparmio||{})[k.id]||0}"></div>`).join('');
+    document.getElementById('iRispConti').innerHTML = S.conti.filter(k=>!k.busta).map(k=>
+      `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="flex:1">${esc(k.nome)} <span class="muted">(${esc(k.uso)})</span></span><input style="width:110px" type="number" inputmode="decimal" data-conto="${k.id}" value="${+(S.risparmio||{})[k.id]||0}"></div>`).join('');
     document.getElementById('iCarte').value = S.impostazioni.carte||'';
     document.getElementById('iPrinc').value = S.impostazioni.contoPrincipale||'';
     document.getElementById('iFine').value = S.impostazioni.giornoFine;
