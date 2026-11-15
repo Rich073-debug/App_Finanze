@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (4)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (5)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -1014,7 +1014,7 @@ function render(){
   document.getElementById('entrateList').innerHTML = entrateP.length ? entrateP.map(e=>
     `<div class="row" onclick="editEntrata('${e.id}')"><div class="grow"><div class="t">${esc(e.nota||'Entrata')}</div><div class="s">${parseDate(e.data).toLocaleDateString('it-IT')}${parseDate(e.data)>=c.inizio?' · in questo periodo':''}</div></div><div class="amt ok">+${fmt(e.importo)}</div></div>`).join('') : '<div class="empty">Nessuna entrata extra</div>';
 
-  document.getElementById('contiList').innerHTML = S.conti.map(k=>`<div class="row" onclick="editConto('${k.id}')"><div class="grow"><div class="t">${esc(k.nome)}</div><div class="s">${esc(k.uso||'')}${k.numero?' · n. '+esc(k.numero):''}</div></div><div class="amt">›</div></div>`).join('');
+  document.getElementById('contiList').innerHTML = S.conti.map(k=>`<div class="row" onclick="editConto('${k.id}')"><div class="grow"><div class="t">${esc(k.nome)}</div><div class="s">${esc(k.uso||'')}${k.numero?' · n. '+esc(k.numero):''}</div></div><div class="amt">${(()=>{ const v = saldoConto(k); return v!==undefined&&v!==null ? fmt(v) : '<span class="muted">saldo —</span>'; })()} ›</div></div>`).join('');
   document.getElementById('logNotif').innerHTML = (S.logNotifiche||[]).slice().reverse().map(l=>`<div class="row" style="display:block"><div class="s">${new Date(l.ts).toLocaleString('it-IT')} ${l.fonte?'· '+esc(l.fonte):''}</div><div style="font-size:13.5px">${esc(l.titolo)} — ${esc(l.testo)}</div><div class="s ok">→ ${esc(l.esito||'')}</div></div>`).join('') || '<div class="empty">Ancora nessuna</div>';
   // ---- IMPOSTAZIONI
   renderSicurezza();
@@ -1264,14 +1264,18 @@ function editConto(id){
     <label>Nome</label><input id="kNome" value="${esc(k.nome)}" placeholder="es. Revolut">
     <label>A cosa serve</label><input id="kUso" value="${esc(k.uso)}" placeholder="es. Vacanze">
     <label>Numeri di conto o carte (ultime cifre, separate da virgola)</label><input id="kNum" value="${esc(k.numero||'')}" placeholder="es. 123 oppure 4567, 890">
+    <label>Saldo attuale (€)</label><input id="kSaldo" type="text" inputmode="decimal" placeholder="es. 1200" value="${(()=>{ const v = k.busta ? (busta().saldi||{})[k.id] : k.saldo; return v!==undefined&&v!==null ? String(v).replace('.',',') : ''; })()}">
     <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="kBusta" style="width:auto" ${k.busta?'checked':''}> Collegato alla busta Prepagata / PayPal (il suo saldo si somma)</label>
     <div class="grid2" style="margin-top:18px">${id?`<button class="btn danger" onclick="S.conti=S.conti.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaConto('${id||''}')">Salva</button></div>`);
 }
 function salvaConto(id){
   const nome = document.getElementById('kNome').value.trim(); if(!nome){ toast('Inserisci un nome'); return; }
   const dati = {nome, uso:document.getElementById('kUso').value.trim(), numero:document.getElementById('kNum').value.trim(), busta:document.getElementById('kBusta').checked};
-  if(id) Object.assign(S.conti.find(x=>x.id===id), dati); else S.conti.push({id:uid(), ...dati});
-  if(dati.busta && S.risparmio && id) delete S.risparmio[id];
+  if(id) Object.assign(S.conti.find(x=>x.id===id), dati); else { id = uid(); S.conti.push({id, ...dati}); }
+  if(dati.busta && S.risparmio) delete S.risparmio[id];
+  const sv = document.getElementById('kSaldo').value.trim();
+  if(sv){ const v = numeroIt(sv.replace('€','')); if(!isNaN(v)){ const c = S.conti.find(x=>x.id===id);
+    if(c.busta){ busta().saldi[id] = round2(v); } else { c.saldo = round2(v); c.saldoTs = Date.now(); } } }
   aggiornaSaldoTot(); save(); closeSheet(); render();
 }
 function editCategoria(nome){
