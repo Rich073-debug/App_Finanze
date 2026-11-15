@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (6)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (7)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -732,10 +732,44 @@ function nuovoStipendio(importo, dataStr){
   // chiude il periodo attuale: accantona le quote annuali e salva lo storico
   const c = calcola();
   S.annuali.forEach(a=>{ a.accantonato = round2(Math.min(a.importo, (a.accantonato||0) + quotaAnnuale(a))); });
-  S.storicoPeriodi.push({ inizio:S.periodo.inizio, fine:isoDate(new Date(parseDate(dataStr)-DAY)), stipendio:c.stip, disponibile:round2(c.disponibile), speso:round2(c.spesoTot) });
+  const avanzo = round2(c.disponibile - c.spesoTot);
+  const chiuso = { inizio:S.periodo.inizio, fine:isoDate(new Date(parseDate(dataStr)-DAY)), stipendio:c.stip, disponibile:round2(c.disponibile), speso:round2(c.spesoTot), avanzo };
+  S.storicoPeriodi.push(chiuso);
   S.periodo = { inizio:dataStr, stipendio:importo, spostati:{}, pagate:{} };
   save(); render();
   toast(`💶 Nuovo periodo iniziato! Stipendio ${fmt(importo)}`);
+  if(Math.abs(avanzo) >= 1) resocontoPeriodo(chiuso);
+}
+/* resoconto del periodo appena chiuso: cosa fare con l'avanzo (o lo sforamento) */
+function resocontoPeriodo(p){
+  const intest = `<h3>📊 Periodo chiuso</h3>
+    <p class="muted">Dal ${parseDate(p.inizio).toLocaleDateString('it-IT')} al ${parseDate(p.fine).toLocaleDateString('it-IT')}: avevi ${fmt(p.disponibile)} per le spese di tutti i giorni e ne hai spesi ${fmt(p.speso)}.</p>`;
+  const conti = S.conti.filter(k=>!k.busta);
+  if(p.avanzo > 0){
+    openSheet(intest + `<p style="font-size:18px">Ti sono <b class="ok">avanzati ${fmt(p.avanzo)}</b> 👏</p>
+      <p class="muted">Sono ancora sul conto principale. Cosa vuoi farne?</p>
+      <button class="btn" style="width:100%;margin-top:4px" onclick="sceltaAvanzo('budget')">Aggiungili al nuovo budget</button>
+      ${conti.map(k=>`<button class="btn sec" style="width:100%;margin-top:8px" onclick="sceltaAvanzo(this.dataset.c)" data-c="${esc(k.id)}">Mettili da parte → ${esc(k.nome)}</button>`).join('')}
+      <button class="btn sec" style="width:100%;margin-top:8px;background:none;color:var(--muted)" onclick="sceltaAvanzo('margine')">Lasciali sul conto come margine</button>`);
+  } else {
+    openSheet(intest + `<p style="font-size:18px">Hai <b class="bad">sforato di ${fmt(-p.avanzo)}</b></p>
+      <p class="muted">Se li togli dal nuovo budget, recuperi nel periodo che inizia (il budget giornaliero sarà un po' più basso). Altrimenti restano come differenza sul conto.</p>
+      <button class="btn" style="width:100%;margin-top:4px" onclick="sceltaAvanzo('recupera')">Toglili dal nuovo budget</button>
+      <button class="btn sec" style="width:100%;margin-top:8px;background:none;color:var(--muted)" onclick="sceltaAvanzo('ignora')">Non fare niente</button>`);
+  }
+}
+function sceltaAvanzo(scelta){
+  const p = S.storicoPeriodi[S.storicoPeriodi.length-1]; if(!p) return closeSheet();
+  const imp = Math.abs(p.avanzo);
+  if(scelta==='budget'){ S.entrate.push({id:uid(), data:S.periodo.inizio, importo:imp, nota:'Avanzo del periodo precedente'}); p.scelta = 'aggiunto al budget'; }
+  else if(scelta==='recupera'){ S.movimenti.push({id:uid(), ts:Math.max(Date.now(), parseDate(S.periodo.inizio).getTime()), importo:imp, fonte:'manuale', desc:'Sforamento del periodo precedente', cat:'Altro', tipo:'var'}); p.scelta = 'recuperato nel nuovo periodo'; }
+  else if(scelta==='margine' || scelta==='ignora'){ p.scelta = 'lasciato sul conto'; }
+  else { // un conto: entra nel periodo e va spostato
+    S.entrate.push({id:uid(), data:S.periodo.inizio, importo:imp, nota:'Avanzo del periodo precedente'});
+    S.periodo.extraDaParte = S.periodo.extraDaParte||{}; S.periodo.extraDaParte[scelta] = round2((+S.periodo.extraDaParte[scelta]||0) + imp);
+    p.scelta = 'da spostare su '+nomeConto(scelta);
+  }
+  save(); closeSheet(); render(); toast('Fatto: '+fmt(imp)+' '+p.scelta);
 }
 function segnaAnnualePagata(id, registra=true){
   const a = S.annuali.find(x=>x.id===id); if(!a) return;
