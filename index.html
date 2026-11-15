@@ -131,6 +131,11 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <div id="pianoResta"></div>
   </div>
 
+  <div class="card" id="cardBusta">
+    <h2>Prepagata / PayPal</h2>
+    <div id="bustaBody"></div>
+  </div>
+
   <div class="card" id="cardPrev">
     <h2>Previsioni e scadenze</h2>
     <div id="prevList"></div>
@@ -166,6 +171,12 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <button class="btn sec small" style="margin-top:10px" onclick="editAnnuale()">＋ Aggiungi scadenza</button>
   </div>
   <div class="card">
+    <h2>Abbonamenti (Prepagata / PayPal)</h2>
+    <p class="muted" style="margin-top:0">Pagati dalla prepagata tramite PayPal: non toccano il budget giornaliero, ma l'app ti avvisa se sulla prepagata non bastano i soldi.</p>
+    <div id="abbList"></div>
+    <button class="btn sec small" style="margin-top:10px" onclick="editAbbonamento()">＋ Aggiungi abbonamento</button>
+  </div>
+  <div class="card">
     <h2>Entrate extra</h2>
     <p class="muted" style="margin-top:0">Trasferte, lavori extra, rimborsi: aumentano il budget del periodo in cui le aggiungi.</p>
     <div id="entrateList"></div>
@@ -179,7 +190,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>14 novembre 2026</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -407,6 +418,120 @@ function toggleSpostato(key){
 /* =====================================================================
    PREVISIONI
    ===================================================================== */
+/* =====================================================================
+   BUSTA PREPAGATA / PAYPAL
+   Le ricariche escono dal conto principale (e contano nel budget);
+   gli acquisti e gli abbonamenti pagati con PayPal escono dalla busta.
+   ===================================================================== */
+function busta(){ S.busta = S.busta || {saldo:null, abbonamenti:[], movimenti:[]}; return S.busta; }
+// "Il tuo acquisto presso Zalando SE" / "Il tuo pagamento di €36,95 EUR è stato completato"
+function analizzaPayPal(titolo, testo){
+  const t = ((titolo||'')+' \n '+(testo||'')).trim(), tl = t.toLowerCase();
+  const importo = estraiImporto(t);
+  if(importo===null || isNaN(importo) || !importo) return {azione:'ignora', motivo:'PayPal: nessun importo'};
+  if(/rimborso|rimborsat|hai ricevuto|ricevuto denaro|ti ha inviato/.test(tl)) return {azione:'busta', tipo:'entrata', importo, desc:'Rimborso / denaro ricevuto'};
+  let m = t.match(/presso\s+(.+?)(?:\s*[\n.,]|$)/i) || t.match(/\ba\s+([A-Z][^\n.,]{1,40})/) || t.match(/\bda\s+([A-Z][^\n.,]{1,40})/);
+  const desc = m ? m[1].replace(/\s+(se|ab|srl|s\.r\.l\.|spa|s\.p\.a\.|ltd|inc|b\.v\.)$/i,'').trim() : 'Pagamento PayPal';
+  return {azione:'busta', tipo:'uscita', importo, desc};
+}
+function abbonamentoDa(desc){
+  const d = (desc||'').toLowerCase();
+  return busta().abbonamenti.find(a=>(a.parole||a.nome).toLowerCase().split(',').some(p=>p.trim() && d.includes(p.trim())));
+}
+function movimentoBusta({tipo, importo, desc, manuale}){
+  const b = busta();
+  const abb = tipo==='uscita' ? abbonamentoDa(desc) : null;
+  b.movimenti.push({id:uid(), ts:Date.now(), tipo, importo:round2(importo), desc:abb ? abb.nome : desc, abb: abb?abb.id:null});
+  b.movimenti = b.movimenti.slice(-200);
+  if(b.saldo!==null) b.saldo = round2(b.saldo + (tipo==='uscita' ? -importo : importo));
+  if(abb) abb.ultimo = isoDate(today());
+  save(); render();
+  if(!manuale) toast(`${tipo==='uscita'?'💳 PayPal':'＋ PayPal'}: ${fmt(importo)} ${abb?'('+abb.nome+')':desc?'· '+desc:''}${b.saldo!==null?' — sulla prepagata restano circa '+fmt(b.saldo):''}`);
+}
+// prossimo addebito di un abbonamento (giorno del mese)
+function prossimoAddebito(a){
+  const o = today(), g = a.giorno||1;
+  const qui = new Date(o.getFullYear(), o.getMonth(), Math.min(g, ultimoGiorno(o.getFullYear(), o.getMonth())));
+  const giaPagato = a.ultimo && parseDate(a.ultimo).getMonth()===o.getMonth() && parseDate(a.ultimo).getFullYear()===o.getFullYear();
+  if(qui >= o && !giaPagato) return qui;
+  return new Date(o.getFullYear(), o.getMonth()+1, Math.min(g, ultimoGiorno(o.getFullYear(), o.getMonth()+1)));
+}
+function avvisoBusta(){
+  const b = busta(); if(!b.abbonamenti.length) return null;
+  const o = today(), entro = 5;
+  const prossimi = b.abbonamenti.map(a=>({a, d:prossimoAddebito(a)})).filter(x=>daysBetween(o, x.d) <= entro).sort((x,y)=>x.d-y.d);
+  if(!prossimi.length) return null;
+  const serve = round2(prossimi.reduce((t,x)=>t+x.a.importo,0));
+  const manca = b.saldo===null ? null : round2(serve - b.saldo);
+  return {prossimi, serve, manca};
+}
+function ricaricaBusta(){
+  openSheet(`<h3>＋ Ricarica prepagata</h3>
+    <p class="muted">I soldi escono dal conto principale: conta come spesa del periodo. Gli acquisti con PayPal poi non pesano più sul budget, perché sono già coperti.</p>
+    <input class="amount-input" id="rcImp" type="text" inputmode="decimal" placeholder="0,00 €">
+    <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="rcBudget" style="width:auto" checked> Conta nel budget di questo periodo</label>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="confermaRicarica()">Registra ricarica</button>`);
+  setTimeout(()=>document.getElementById('rcImp')?.focus(),150);
+}
+function confermaRicarica(){
+  const v = numeroIt(document.getElementById('rcImp').value.replace('€',''));
+  if(!v || isNaN(v)){ toast('Inserisci un importo'); return; }
+  const b = busta(); if(b.saldo===null) b.saldo = 0;
+  movimentoBusta({tipo:'ricarica', importo:v, desc:'Ricarica dal conto', manuale:true});
+  if(document.getElementById('rcBudget').checked) S.movimenti.push({id:uid(), ts:Date.now(), importo:round2(v), fonte:'bonifico', desc:'Ricarica prepagata', cat:'Altro', tipo:'var'});
+  save(); closeSheet(); render(); toast('Ricarica registrata: '+fmt(v)+' — saldo circa '+fmt(busta().saldo));
+}
+function saldoBusta(){
+  const b = busta();
+  openSheet(`<h3>Saldo prepagata + PayPal</h3>
+    <p class="muted">Scrivi quanto c'è adesso sulla prepagata (e sul saldo PayPal, se c'è qualcosa). Lo vedi nell'app della banca. Da qui in poi l'app lo aggiorna da sola con ricariche e pagamenti.</p>
+    <input class="amount-input" id="bsSaldo" type="text" inputmode="decimal" placeholder="0,00 €" value="${b.saldo!==null?String(b.saldo).replace('.',','):''}">
+    <button class="btn" style="width:100%;margin-top:14px" onclick="const v=numeroIt(document.getElementById('bsSaldo').value.replace('€',''));if(isNaN(v)){toast('Inserisci un importo');return;}busta().saldo=round2(v);save();closeSheet();render();toast('Saldo impostato')">Salva</button>`);
+  setTimeout(()=>document.getElementById('bsSaldo')?.focus(),150);
+}
+function spesaBustaManuale(){
+  openSheet(`<h3>Pagamento con PayPal / prepagata</h3>
+    <input class="amount-input" id="bmImp" type="text" inputmode="decimal" placeholder="0,00 €">
+    <label>Descrizione</label><input id="bmDesc" placeholder="es. Zalando, Amazon…">
+    <button class="btn" style="width:100%;margin-top:14px" onclick="const v=numeroIt(document.getElementById('bmImp').value.replace('€',''));if(!v||isNaN(v)){toast('Inserisci un importo');return;}closeSheet();movimentoBusta({tipo:'uscita',importo:v,desc:document.getElementById('bmDesc').value.trim()||'Pagamento PayPal'})">Registra</button>`);
+}
+function editAbbonamento(id){
+  const a = busta().abbonamenti.find(x=>x.id===id) || {nome:'',importo:'',giorno:1,parole:''};
+  openSheet(`<h3>${id?'Modifica':'Nuovo'} abbonamento</h3>
+    <label>Nome</label><input id="abNome" value="${esc(a.nome)}" placeholder="es. Netflix">
+    <label>Importo mensile (€)</label><input id="abImp" type="text" inputmode="decimal" value="${String(a.importo).replace('.',',')}">
+    <label>Giorno del mese dell'addebito</label><input id="abGiorno" type="number" min="1" max="31" value="${a.giorno}">
+    <label>Parole per riconoscerlo nelle notifiche PayPal</label><input id="abParole" value="${esc(a.parole||'')}" placeholder="es. netflix">
+    <div class="grid2" style="margin-top:18px">${id?`<button class="btn danger" onclick="busta().abbonamenti=busta().abbonamenti.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaAbbonamento('${id||''}')">Salva</button></div>`);
+}
+function salvaAbbonamento(id){
+  const v = numeroIt(document.getElementById('abImp').value), nome = document.getElementById('abNome').value.trim();
+  if(!nome || isNaN(v)){ toast('Inserisci nome e importo'); return; }
+  const dati = {nome, importo:round2(v), giorno:+document.getElementById('abGiorno').value||1, parole:document.getElementById('abParole').value.trim()||nome.toLowerCase()};
+  const b = busta();
+  if(id) Object.assign(b.abbonamenti.find(x=>x.id===id), dati); else b.abbonamenti.push({id:uid(), ...dati});
+  save(); closeSheet(); render();
+}
+function renderBusta(){
+  const b = busta(), el = document.getElementById('bustaBody'); if(!el) return;
+  const card = document.getElementById('cardBusta');
+  card.style.display = (b.abbonamenti.length || b.saldo!==null || b.movimenti.length) ? '' : 'none';
+  const av = avvisoBusta();
+  let h = `<div class="row"><div class="grow"><div class="t">Saldo stimato</div><div class="s">${b.saldo===null?'<span class="warn">Tocca per inserire il saldo attuale</span>':'Prepagata + saldo PayPal'}</div></div><div class="amt ${b.saldo!==null&&b.saldo<0?'bad':''}" onclick="saldoBusta()" style="cursor:pointer">${b.saldo===null?'—':fmt(b.saldo)} ✎</div></div>`;
+  if(av){
+    const elenco = av.prossimi.map(x=>`${esc(x.a.nome)} ${fmt(x.a.importo)} il ${fDate(x.d)}`).join(', ');
+    if(av.manca===null) h += `<p class="warn" style="margin:10px 0">⚠️ In arrivo: ${elenco}. Inserisci il saldo per sapere se basta.</p>`;
+    else if(av.manca > 0) h += `<p class="bad" style="margin:10px 0"><b>⚠️ Ricarica almeno ${fmt(Math.ceil(av.manca))}</b>: in arrivo ${elenco}, ma sulla prepagata hai circa ${fmt(b.saldo)}.</p>`;
+    else h += `<p class="ok" style="margin:10px 0">✓ In arrivo ${elenco}: il saldo basta.</p>`;
+  }
+  const ult = [...b.movimenti].sort((x,y)=>y.ts-x.ts).slice(0,4);
+  h += ult.map(m=>`<div class="row"><div class="grow"><div class="t">${m.tipo==='uscita'?'💳':'＋'} ${esc(m.desc)}</div><div class="s">${fDateLong(new Date(m.ts))}${m.abb?' · abbonamento':''}</div></div><div class="amt ${m.tipo==='uscita'?'':'ok'}">${m.tipo==='uscita'?'−':'+'}${fmt(m.importo)}</div></div>`).join('');
+  h += `<div class="grid2" style="margin-top:10px"><button class="btn sec small" onclick="ricaricaBusta()">＋ Ricarica</button><button class="btn sec small" onclick="spesaBustaManuale()">− Pagamento</button></div>`;
+  el.innerHTML = h;
+  const al = document.getElementById('abbList');
+  if(al) al.innerHTML = b.abbonamenti.length ? b.abbonamenti.map(a=>`<div class="row" onclick="editAbbonamento('${a.id}')"><div class="grow"><div class="t">${esc(a.nome)}</div><div class="s">giorno ${a.giorno} · prossimo ${fDate(prossimoAddebito(a))}</div></div><div class="amt">${fmt(a.importo)}</div></div>`).join('') + `<div class="row"><div class="grow"><b>Totale mensile</b></div><div class="amt">${fmt(b.abbonamenti.reduce((t,a)=>t+a.importo,0))}</div></div>` : '<div class="empty">Nessun abbonamento</div>';
+}
+
 function previsioneCarburante(){
   const pieni = S.movimenti.filter(m=>m.cat==='Carburante' && m.tipo==='var').sort((a,b)=>a.ts-b.ts);
   if(pieni.length < 2) return {n:pieni.length};
@@ -574,7 +699,9 @@ function pulisciDesc(s){
 function eseguiNotifica(titolo, testo, fonteHint){
   S.logNotifiche = (S.logNotifiche||[]).concat([{ts:Date.now(), titolo, testo, fonte:fonteHint||''}]).slice(-15);
   S.periodo.spostati = S.periodo.spostati||{};
-  const r = analizzaNotifica(titolo, testo, fonteHint);
+  const r = fonteHint==='paypal' ? analizzaPayPal(titolo, testo) : analizzaNotifica(titolo, testo, fonteHint);
+  if(r.azione==='busta'){ movimentoBusta(r); }
+  else
   if(r.azione==='spesa') aggiungiMovimento({importo:r.importo, fonte:r.fonte, desc:r.desc});
   else if(r.azione==='stipendio') chiediStipendio(r.importo);
   else if(r.azione==='entrata'){ S.entrate.push({id:uid(), data:isoDate(today()), importo:r.importo, nota:r.desc||'Entrata'}); save(); render(); toast('＋ Entrata registrata: '+fmt(r.importo)); }
@@ -736,6 +863,8 @@ function render(){
 
   const ult = [...S.movimenti].sort((a,b)=>b.ts-a.ts).slice(0,6);
   document.getElementById('ultimi').innerHTML = ult.length ? ult.map(rigaMov).join('') : '<div class="empty">Nessuna spesa registrata. Tocca "＋ Spesa" per iniziare.</div>';
+
+  renderBusta();
 
   // ---- MOVIMENTI
   let lista = [...S.movimenti].sort((a,b)=>b.ts-a.ts);
