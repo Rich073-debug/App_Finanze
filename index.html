@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>15 novembre 2026 (7)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>16 novembre 2026</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -802,6 +802,11 @@ function analizzaNotifica(titolo, testo, fonteHint){
   // da ignorare: codici OTP, autorizzazioni, saldo
   if(/inserisci il codice|digita il codice|codice (di )?(sicurezza|conferma|otp)|\botp\b|saldo disponibile|abbiamo disattivato|bloccat/.test(tl)) return {azione:'ignora', motivo:'codice o avviso non di spesa'};
   const importo = estraiImporto(t);
+  // prelievo al bancomat: i contanti si registrano quando li spendi (altrimenti verrebbero contati due volte)
+  if(/\batm\b|prelievo|prelevamento/.test(tl)) return {azione:'ignora', motivo:'prelievo contanti: registra le spese in contanti quando le fai'};
+  // ricarica della prepagata (o di un altro conto collegato alla busta)
+  const bustaNum = (S.conti||[]).filter(c=>c.busta).some(c=>numeriConto(c).some(n=>n.length>=3 && t.replace(/\s/g,'').includes(n)));
+  if(/ricarica/.test(tl) && (/prepagat/.test(tl) || bustaNum)) return (importo===null || isNaN(importo)) ? {azione:'chiediRicarica'} : {azione:'ricarica', importo};
   if(importo===null || isNaN(importo)){
     // Inbank: "È stato addebitato un importo" + "PRE-ADDEBITO POS ITALIA D PIU CASSA 1 SPELLO" (senza cifra)
     if(/emolument|stipendio/.test(tl)) return {azione:'stipendio', importo:null};
@@ -872,6 +877,12 @@ function eseguiNotifica(titolo, testo, fonteHint){
     else chiediBonifico(r.importo, r.desc);
   }
   else if(r.azione==='chiediImporto') chiediImporto(r.desc, r.fonte);
+  else if(r.azione==='chiediRicarica') ricaricaBusta();
+  else if(r.azione==='ricarica'){ const b = busta(), cb = contiBusta();
+    if(saldoBustaTot()===null && cb.length) cb.forEach(c=>{ if(b.saldi[c.id]===undefined) b.saldi[c.id]=0; });
+    movimentoBusta({tipo:'ricarica', importo:r.importo, desc:'Ricarica dal conto', manuale:true});
+    S.movimenti.push({id:uid(), ts:Date.now(), importo:round2(r.importo), fonte:'bonifico', desc:'Ricarica prepagata', cat:'Altro', tipo:'var'});
+    save(); render(); toast('＋ Ricarica prepagata '+fmt(r.importo)+' registrata'); }
   else toast('Notifica ignorata ('+r.motivo+')');
   if(S.logNotifiche.length) S.logNotifiche[S.logNotifiche.length-1].esito = r.azione + (r.motivo?' – '+r.motivo:'') + (r.importo?' '+fmt(r.importo):'');
   save(); render();
