@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>16 novembre 2026</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>16 novembre 2026 (2)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -862,7 +862,10 @@ function pulisciDesc(s){
 function eseguiNotifica(titolo, testo, fonteHint){
   S.logNotifiche = (S.logNotifiche||[]).concat([{ts:Date.now(), titolo, testo, fonte:fonteHint||''}]).slice(-15);
   S.periodo.spostati = S.periodo.spostati||{};
-  const r = fonteHint==='paypal' ? analizzaPayPal(titolo, testo) : analizzaNotifica(titolo, testo, fonteHint);
+  save(); // la notifica resta nell'elenco anche se qualcosa va storto dopo
+  let r;
+  try { r = fonteHint==='paypal' ? analizzaPayPal(titolo, testo) : analizzaNotifica(titolo, testo, fonteHint); }
+  catch(e){ S.logNotifiche[S.logNotifiche.length-1].esito = 'errore: '+e.message; save(); render(); toast('⚠️ Errore nel leggere la notifica: '+e.message); return {azione:'errore'}; }
   if(r.azione==='busta'){ movimentoBusta(r); }
   else
   if(r.azione==='spesa') aggiungiMovimento({importo:r.importo, fonte:r.fonte, desc:r.desc});
