@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>16 novembre 2026 (2)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -313,10 +313,28 @@ function defaultState(){
     setupFatto:false,
   };
 }
+let doppioniTolti = 0;
 let S = load();
 function load(){
-  try{ const raw = localStorage.getItem(KEY); if(raw){ const st = Object.assign(defaultState(), JSON.parse(raw)); st.v = Math.max(st.v||1, 3); return migraBusta(st); } }catch(e){}
+  try{ const raw = localStorage.getItem(KEY); if(raw){ const st = Object.assign(defaultState(), JSON.parse(raw)); st.v = Math.max(st.v||1, 3); return migraDoppioni(migraBusta(st)); } }catch(e){}
   return defaultState();
+}
+// v5: toglie i bonifici registrati più volte dalla stessa notifica ripetuta (e corregge il saldo del conto)
+function migraDoppioni(st){
+  if((st.v||4) >= 5) return st;
+  const tenuti = [];
+  st.movimenti = (st.movimenti||[]).filter(m=>{
+    const dup = m.fonte==='bonifico' && tenuti.find(k=>k.desc===m.desc && Math.abs(k.importo-m.importo)<0.005 && Math.abs(k.ts-m.ts) < 10*60000);
+    if(m.fonte==='bonifico') tenuti.push(m);
+    if(!dup) return true;
+    const nome = (m.desc.split('→')[1]||'').trim();
+    const c = (st.conti||[]).find(x=>x.nome===nome);
+    if(c && !c.busta && c.saldo!==undefined && c.saldo!==null) c.saldo = Math.round((c.saldo - m.importo)*100)/100;
+    doppioniTolti++;
+    return false;
+  });
+  st.v = 5;
+  return st;
 }
 // v4: la prepagata già usata per la busta viene collegata, e si aggiunge il conto "Saldo PayPal"
 function migraBusta(st){
@@ -859,7 +877,10 @@ function pulisciDesc(s){
   return String(s||'').replace(/\s+/g,' ').replace(/[0-9]{6,}.*/,'').replace(/\b(s\.?p\.?a\.?|s\.?r\.?l\.?)\b/ig,'').trim().slice(0,40)
     .toLowerCase().replace(/(^|\s)\S/g, c=>c.toUpperCase());
 }
-function eseguiNotifica(titolo, testo, fonteHint){
+function eseguiNotifica(titolo, testo, fonteHint, forza){
+  // la stessa notifica può arrivare più volte (la banca la aggiorna, Automate apre più schede): la si conta una volta sola
+  const gia = !forza && (S.logNotifiche||[]).find(n=>n.titolo===titolo && n.testo===testo && (n.fonte||'')===(fonteHint||'') && Date.now()-n.ts < 10*60000 && !/^errore/.test(n.esito||''));
+  if(gia){ toast('Notifica già registrata', 'Registra comunque', ()=>eseguiNotifica(titolo, testo, fonteHint, true)); return {azione:'doppione'}; }
   S.logNotifiche = (S.logNotifiche||[]).concat([{ts:Date.now(), titolo, testo, fonte:fonteHint||''}]).slice(-15);
   S.periodo.spostati = S.periodo.spostati||{};
   save(); // la notifica resta nell'elenco anche se qualcosa va storto dopo
@@ -1606,6 +1627,7 @@ blocca();
 render();
 renderSicurezza();
 gestisciURL();
+if(doppioniTolti){ save(); dopoSblocco(()=>toast('🧹 Tolti '+doppioniTolti+' bonifici registrati due volte (saldo dei conti corretto)')); }
 if(!bloccato){ primoAvvio(); controllaBackup(); } else inAttesa.push(primoAvvio, controllaBackup);
 // se l'app è già aperta, un nuovo link con # non ricarica la pagina: lo intercettiamo qui
 window.addEventListener('hashchange', ()=>{ S = load(); gestisciURL(); });
