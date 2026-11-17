@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (5)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (6)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -921,7 +921,7 @@ function eseguiNotifica(titolo, testo, fonteHint, forza){
     const f = S.fisse.find(x=>x.attiva && x.conto && (!r.verso || x.conto===r.verso) && Math.abs(x.importo-r.importo)<0.01 && !S.periodo.spostati?.['f_'+x.id]);
     const rk = Object.keys(S.risparmio||{}).find(k=>(!r.verso || k===r.verso) && Math.abs((+S.risparmio[k]||0)-r.importo)<0.01 && !S.periodo.spostati?.['r_'+k]);
     if(f) aggiungiSaldoConto(f.conto, r.importo), aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:f.nome+' → '+nomeConto(f.conto), tipo:'fissa', forza:true}) && (S.movimenti[S.movimenti.length-1].rif=f.id, S.periodo.spostati['f_'+f.id]=true, save(), render());
-    else if(rk){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.spostati['r_'+rk]=true; aggiungiSaldoConto(rk, r.importo); aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:'Risparmio → '+nomeConto(rk), tipo:'giro', forza:true}); }
+    else if(rk){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.spostati['r_'+rk]=true; aggiungiSaldoConto(rk, r.importo); aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:'Risparmio → '+nomeConto(rk), tipo:'giro', forza:true}); const ult=S.movimenti[S.movimenti.length-1]; if(ult) ult.riconciliato=true; save(); }
     else if(r.verso){ aggiungiSaldoConto(r.verso, r.importo); aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:r.desc, tipo:'giro', forza:true}); }
     else chiediBonifico(r.importo, r.desc);
   }
@@ -1016,7 +1016,21 @@ function rigaMov(m){
   return `<div class="row" onclick="editMov('${m.id}')"><div class="grow"><div class="t">${FONTE_ICO[m.fonte]||''} ${esc(m.desc||(m.fonte==='contanti'?'Contanti':'Spesa'))}</div><div class="s">${tag}${fDateLong(d)} · ${fTime(m.ts)}</div></div><div class="amt">−${fmt(m.importo)}</div></div>`;
 }
 
+// un bonifico verso un conto di risparmio fatto nel periodo (anche prima di caricare lo stipendio, lo stesso giorno) spunta da solo la voce "Soldi da spostare"
+function riconciliaSpostati(){
+  S.periodo.spostati = S.periodo.spostati||{};
+  let cambiato = false;
+  S.movimenti.forEach(m=>{
+    if(m.riconciliato || m.fonte!=='bonifico' || !inPeriodo(m.ts)) return;
+    const nome = ((m.desc||'').split('→')[1]||'').trim();
+    const c = S.conti.find(x=>x.nome===nome); if(!c) return;
+    const r = +(S.risparmio||{})[c.id]||0;
+    if(r>0 && Math.abs(r-m.importo)<0.01 && !S.periodo.spostati['r_'+c.id]){ S.periodo.spostati['r_'+c.id] = true; m.riconciliato = true; cambiato = true; }
+  });
+  if(cambiato) save();
+}
 function render(){
+  riconciliaSpostati();
   const c = calcola();
   document.getElementById('hTitle').textContent = TITOLI[vista];
   document.getElementById('hSub').textContent = vista==='oggi' ? fDateLong(c.oggi) : '';
