@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.rich073.finanze'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.rich073.finanze'
+        minSdk 29
+        targetSdk 34
+        versionCode (project.findProperty('versionCode') ?: '1').toInteger()
+        versionName '1.' + (project.findProperty('versionCode') ?: '0')
+    }
+
+    signingConfigs {
+        // chiave fissa: serve solo perché ogni nuova versione si installi sopra la precedente
+        finanze {
+            storeFile file('finanze.jks')
+            storePassword 'finanze-app'
+            keyAlias 'finanze'
+            keyPassword 'finanze-app'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.finanze
+        }
+    }
+
+    buildFeatures { buildConfig true }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.biometric:biometric:1.1.0'
+    implementation 'androidx.core:core:1.13.1'
+}

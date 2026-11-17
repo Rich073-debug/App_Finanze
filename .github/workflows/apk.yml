@@ -1,0 +1,52 @@
+name: Crea APK
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compila
+        working-directory: android
+        run: gradle assembleRelease -PversionCode=${{ github.run_number }} --no-daemon --stacktrace 2>&1 | tee ../build.log; exit ${PIPESTATUS[0]}
+
+      - name: Prepara il file
+        run: cp android/app/build/outputs/apk/release/app-release.apk Finanze.apk
+
+      - name: Pubblica l'APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk
+          name: App Finanze per Android
+          body: |
+            Scarica **Finanze.apk** qui sotto e aprilo sul telefono per installare (o aggiornare) l'app.
+            Versione 1.${{ github.run_number }}
+          files: Finanze.apk
+          make_latest: true
+
+      - name: Registro degli errori
+        if: failure()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-log
+          name: Registro ultima compilazione
+          prerelease: true
+          files: build.log
