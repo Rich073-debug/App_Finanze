@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (3)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (4)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -761,11 +761,13 @@ function nuovoStipendio(importo, dataStr){
 /* resoconto del periodo appena chiuso: cosa fare con l'avanzo (o lo sforamento) */
 function resocontoPeriodo(p){
   const intest = `<h3>📊 Periodo chiuso</h3>
-    <p class="muted">Dal ${parseDate(p.inizio).toLocaleDateString('it-IT')} al ${parseDate(p.fine).toLocaleDateString('it-IT')}: avevi ${fmt(p.disponibile)} per le spese di tutti i giorni e ne hai spesi ${fmt(p.speso)}.</p>`;
+    <p class="muted">Dal ${parseDate(p.inizio).toLocaleDateString('it-IT')} al ${parseDate(p.fine).toLocaleDateString('it-IT')}: avevi ${fmt(p.disponibile)} per le spese di tutti i giorni e ne hai spesi ${fmt(p.speso)}.</p>`
+    + `<div class="row"><div class="grow"><div class="t">🔒 Messi da parte per le scadenze</div><div class="s">Bollo, assicurazione, spese previste… Restano sul conto principale: non devi fare niente</div></div><div class="amt">${fmt(S.annuali.reduce((t,x)=>t+(+x.accantonato||0),0))}</div></div>`
+    + (riservaConto()>0 ? `<div class="row"><div class="grow"><div class="t">🐖 Risparmi già lasciati sul conto</div><div class="s">Dai mesi passati</div></div><div class="amt">${fmt(riservaConto())}</div></div>` : '');
   const conti = S.conti.filter(k=>!k.busta);
   if(p.avanzo > 0){
     openSheet(intest + `<p style="font-size:18px">Ti sono <b class="ok">avanzati ${fmt(p.avanzo)}</b> 👏</p>
-      <p class="muted">Sono ancora sul conto principale. Cosa vuoi farne?</p>
+      <p class="muted">Questi sono soldi liberi, non servono per nessuna scadenza. Sono ancora sul conto principale: cosa vuoi farne?</p>
       <button class="btn" style="width:100%;margin-top:4px" onclick="sceltaAvanzo('budget')">Aggiungili al nuovo budget</button>
       ${conti.map(k=>`<button class="btn sec" style="width:100%;margin-top:8px" onclick="sceltaAvanzo(this.dataset.c)" data-c="${esc(k.id)}">Mettili da parte → ${esc(k.nome)}</button>`).join('')}
       <button class="btn sec" style="width:100%;margin-top:8px;background:none;color:var(--muted)" onclick="sceltaAvanzo('margine')">Lasciali sul conto come risparmio</button>`);
