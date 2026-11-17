@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (7)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (8)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -1307,8 +1307,10 @@ function editRiservaConto(){
 /* ---------- sistema i conti di inizio mese: riparte dalle cifre della banca ---------- */
 const FINTI = /spese non tracciate|sforamento del periodo precedente/i;
 function movPeriodo(){ return S.movimenti.filter(m=>m.tipo==='var' && inPeriodo(m.ts)); }
+// bonifici verso gli altri conti di questo mese (PAC, risparmi, spese fisse pagate da un altro conto)
+function bonificiMese(){ return round2(pianoConti(calcola()).sposta.filter(x=>/^(r_|f_)/.test(x.key)).reduce((t,x)=>t+x.importo,0)); }
 function sistemaInizio(){
-  const pac = totRisparmio();
+  const pac = bonificiMese();
   const stip = S.periodo.stipendio || S.impostazioni.stipendio || '';
   const mov = movPeriodo();
   openSheet(`<h3>🧹 Sistema i conti di inizio mese</h3>
@@ -1316,7 +1318,7 @@ function sistemaInizio(){
     <label>Stipendio arrivato (€)</label><input id="siStip" type="text" inputmode="decimal" value="${String(stip).replace('.',',')}" oninput="anteprimaInizio()">
     <label>Saldo contabile in banca (€)</label><input id="siSaldo" type="text" inputmode="decimal" placeholder="es. 2034,53" oninput="anteprimaInizio()">
     <label>Spese ancora "da contabilizzare" (€)</label><input id="siPend" type="text" inputmode="decimal" placeholder="0,00" oninput="anteprimaInizio()">
-    ${pac>0?`<label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="siPac" style="width:auto" checked onchange="anteprimaInizio()"> Il bonifico dei risparmi (${fmt(pac)}) non è ancora uscito dal saldo</label>`:''}
+    ${pac>0?`<label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="siPac" style="width:auto" checked onchange="anteprimaInizio()"> I bonifici verso gli altri conti (${fmt(pac)}, es. PAC) non sono ancora usciti dal saldo</label>`:''}
     <p style="margin:14px 0 4px"><b>Spese di questo mese che restano</b> <span class="muted">(togli la spunta a quelle da cancellare)</span></p>
     ${mov.length? mov.map(m=>`<label style="display:flex;align-items:center;gap:10px;color:var(--text);margin:4px 0"><input type="checkbox" class="siMov" data-id="${m.id}" style="width:auto" ${FINTI.test(m.desc||'')?'':'checked'} onchange="anteprimaInizio()"> ${esc(m.desc||'Spesa')} · ${fmt(m.importo)} <span class="muted">${fDate(new Date(m.ts))}</span></label>`).join('') : '<p class="muted">Nessuna spesa registrata.</p>'}
     <p class="muted" style="font-size:13px">Se manca una spesa di questi giorni, chiudi e aggiungila con + Spesa prima di continuare.</p>
@@ -1326,7 +1328,7 @@ function calcolaInizio(applica){
   const n = id=>{ const v = numeroIt((document.getElementById(id)?.value||'').replace('€','')); return isNaN(v)?0:v; };
   const stip = n('siStip'), saldo = numeroIt((document.getElementById('siSaldo')?.value||'').replace('€',''));
   if(!stip || isNaN(saldo)) return null;
-  const pend = n('siPend'), pacFuori = document.getElementById('siPac')?.checked ? totRisparmio() : 0;
+  const pend = n('siPend'), pacFuori = document.getElementById('siPac')?.checked ? bonificiMese() : 0;
   const togli = [...document.querySelectorAll('.siMov')].filter(x=>!x.checked).map(x=>x.dataset.id);
   const copia = JSON.stringify(S);
   // pulizia
@@ -1337,7 +1339,7 @@ function calcolaInizio(applica){
   S.periodo.stipendio = round2(stip);
   delete S.periodo.saldo;
   S.riservaConto = 0;
-  Object.keys(S.risparmio||{}).forEach(k=>{ if(+S.risparmio[k]>0) S.periodo.spostati['r_'+k] = true; });
+  pianoConti(calcola()).sposta.filter(x=>/^(r_|f_)/.test(x.key)).forEach(x=>{ S.periodo.spostati[x.key] = true; });
   const c = calcola(), pc = pianoConti(c);
   const netto = round2(saldo - pend - pacFuori);
   const resta = round2(pc.fissePrincipale + pc.accantonati + pc.budgetResiduo);
@@ -1353,7 +1355,7 @@ function calcolaInizio(applica){
 function anteprimaInizio(){
   const out = document.getElementById('siEsito'), r = calcolaInizio(false);
   if(!r){ out.innerHTML=''; return; }
-  out.innerHTML = `<div class="row"><div class="grow">Soldi davvero tuoi adesso<div class="s">saldo − spese in attesa${document.getElementById('siPac')?.checked?' − bonifico risparmi':''}</div></div><div class="amt">${fmt(r.netto)}</div></div>
+  out.innerHTML = `<div class="row"><div class="grow">Soldi davvero tuoi adesso<div class="s">saldo − spese in attesa${document.getElementById('siPac')?.checked?' − bonifici (PAC)':''}</div></div><div class="amt">${fmt(r.netto)}</div></div>
     <div class="row"><div class="grow">Spese fisse da addebitare</div><div class="amt">${fmt(r.fisse)}</div></div>
     <div class="row"><div class="grow">Riserva scadenze</div><div class="amt">${fmt(r.riserva)}</div></div>
     <div class="row"><div class="grow">Budget fino al prossimo stipendio</div><div class="amt">${fmt(r.budget)}</div></div>
