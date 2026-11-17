@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (2)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (3)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -768,7 +768,7 @@ function resocontoPeriodo(p){
       <p class="muted">Sono ancora sul conto principale. Cosa vuoi farne?</p>
       <button class="btn" style="width:100%;margin-top:4px" onclick="sceltaAvanzo('budget')">Aggiungili al nuovo budget</button>
       ${conti.map(k=>`<button class="btn sec" style="width:100%;margin-top:8px" onclick="sceltaAvanzo(this.dataset.c)" data-c="${esc(k.id)}">Mettili da parte → ${esc(k.nome)}</button>`).join('')}
-      <button class="btn sec" style="width:100%;margin-top:8px;background:none;color:var(--muted)" onclick="sceltaAvanzo('margine')">Lasciali sul conto come margine</button>`);
+      <button class="btn sec" style="width:100%;margin-top:8px;background:none;color:var(--muted)" onclick="sceltaAvanzo('margine')">Lasciali sul conto come risparmio</button>`);
   } else {
     openSheet(intest + `<p style="font-size:18px">Hai <b class="bad">sforato di ${fmt(-p.avanzo)}</b></p>
       <p class="muted">Se li togli dal nuovo budget, recuperi nel periodo che inizia (il budget giornaliero sarà un po' più basso). Altrimenti restano come differenza sul conto.</p>
@@ -781,7 +781,8 @@ function sceltaAvanzo(scelta){
   const imp = Math.abs(p.avanzo);
   if(scelta==='budget'){ S.entrate.push({id:uid(), data:S.periodo.inizio, importo:imp, nota:'Avanzo del periodo precedente'}); p.scelta = 'aggiunto al budget'; }
   else if(scelta==='recupera'){ S.movimenti.push({id:uid(), ts:Math.max(Date.now(), parseDate(S.periodo.inizio).getTime()), importo:imp, fonte:'manuale', desc:'Sforamento del periodo precedente', cat:'Altro', tipo:'var'}); p.scelta = 'recuperato nel nuovo periodo'; }
-  else if(scelta==='margine' || scelta==='ignora'){ p.scelta = 'lasciato sul conto'; }
+  else if(scelta==='margine'){ S.riservaConto = round2(riservaConto() + imp); p.scelta = 'aggiunto ai risparmi sul conto'; }
+  else if(scelta==='ignora'){ p.scelta = 'lasciato sul conto'; }
   else { // un conto: entra nel periodo e va spostato
     S.entrate.push({id:uid(), data:S.periodo.inizio, importo:imp, nota:'Avanzo del periodo precedente'});
     S.periodo.extraDaParte = S.periodo.extraDaParte||{}; S.periodo.extraDaParte[scelta] = round2((+S.periodo.extraDaParte[scelta]||0) + imp);
@@ -1036,7 +1037,7 @@ function render(){
      <div class="row"><div class="grow"><div class="t">Budget spese rimasto</div><div class="s">Fino al ${fDate(c.fine)}</div></div><div class="amt">${fmt(pc.budgetResiduo)}</div></div>
      <div class="row"><div class="grow"><b>Totale minimo sul conto</b><div class="s">Se sul conto hai di più, la differenza è margine extra</div></div><div class="amt ok">${fmt(pc.fissePrincipale+pc.accantonati+pc.budgetResiduo)}</div></div>
      ${daSpostareOra()>0 ? `<div class="row"><div class="grow"><div class="t">Ancora da spostare</div><div class="s">Sono ancora sul conto finché non fai i bonifici</div></div><div class="amt">${fmt(daSpostareOra())}</div></div>` : ''}
-     ${(+S.periodo.saldo?.margine||0) ? `<div class="row"><div class="grow"><div class="t">Margine extra</div><div class="s">Soldi in più lasciati sul conto all'ultimo controllo</div></div><div class="amt">${fmt(S.periodo.saldo.margine)}</div></div>` : ''}
+     <div class="row" onclick="editRiservaConto()" style="cursor:pointer"><div class="grow"><div class="t">Risparmi lasciati sul conto</div><div class="s">Avanzi dei mesi passati, fuori dal budget · tocca per modificare</div></div><div class="amt">${fmt(riservaConto())}</div></div>
      <div class="row" onclick="allineaSaldo()" style="cursor:pointer"><div class="grow"><b>Sul conto dovresti avere adesso</b><div class="s">Somma delle voci qui sopra: confrontala con l'app della banca${S.periodo.saldo?'':' · tocca per allineare'}</div></div><div class="amt ok">${S.impostazioni.nascondiPrincipale && !mostraNascosti ? MASCHERA : fmt(saldoPrevisto())}</div></div>
      ${S.periodo.saldo ? `<div class="row"><div class="grow"><div class="t">Ultimo controllo del saldo</div><div class="s">${fmt(S.periodo.saldo.valore)} il ${fDate(new Date(S.periodo.saldo.ts))} · ${esc(S.periodo.saldo.esito||'')}</div></div></div>` : ''}
      <button class="btn sec" style="width:100%;margin-top:10px" onclick="allineaSaldo()">⚖️ Allinea con il saldo reale</button>`;
@@ -1255,7 +1256,15 @@ function confermaStipendio(){
 function minimoSulConto(){ const c = calcola(), pc = pianoConti(c); return round2(pc.fissePrincipale + pc.accantonati + pc.budgetResiduo); }
 // soldi che dovrebbero esserci adesso sul conto principale: minimo + quello ancora da spostare + margine lasciato all'ultimo controllo
 function daSpostareOra(){ return round2(Math.max(0, pianoConti(calcola()).daSpostare||0)); }
-function saldoPrevisto(){ return round2(minimoSulConto() + daSpostareOra() + (+S.periodo.saldo?.margine||0)); }
+function riservaConto(){ if(S.periodo.saldo?.margine){ S.riservaConto = round2((+S.riservaConto||0) + S.periodo.saldo.margine); delete S.periodo.saldo.margine; } return round2(+S.riservaConto||0); }
+function saldoPrevisto(){ return round2(minimoSulConto() + daSpostareOra() + riservaConto()); }
+function editRiservaConto(){
+  openSheet(`<h3>🐖 Risparmi lasciati sul conto</h3>
+    <p class="muted">Soldi tuoi che restano sul conto principale ma non fanno parte del budget: avanzi dei mesi passati, un cuscinetto di sicurezza. Restano qui anche quando arriva il nuovo stipendio.</p>
+    <label>Quanto c'è adesso (€)</label>
+    <input class="amount-input" id="rcVal" type="text" inputmode="decimal" value="${String(riservaConto()).replace('.',',')}">
+    <button class="btn" style="width:100%;margin-top:12px" onclick="const v=numeroIt(document.getElementById('rcVal').value.replace('€','')); if(!isNaN(v)&&v>=0){ S.riservaConto=round2(v); save(); closeSheet(); render(); }">Salva</button>`);
+}
 function allineaSaldo(){
   openSheet(`<h3>⚖️ Allinea con il saldo reale</h3>
     <p class="muted">L'app non vede il conto: ricostruisce il saldo da stipendio e spese. Scrivi quanto hai davvero sul conto principale (lo vedi nell'app della banca) e sistemiamo la differenza.</p>
@@ -1269,7 +1278,7 @@ function anteprimaSaldo(){
   const v = numeroIt(document.getElementById('sdReale').value.replace('€',''));
   const out = document.getElementById('sdEsito');
   if(isNaN(v)){ out.innerHTML=''; return; }
-  const min = round2(minimoSulConto() + daSpostareOra()), diff = round2(v - min);
+  const min = saldoPrevisto(), ris = riservaConto(), diff = round2(v - min);
   const conti = S.conti.filter(k=>k.id!=='prepagata');
   if(Math.abs(diff) < 1){ out.innerHTML = `<p>L'app calcola <b>${fmt(min)}</b>: i conti tornano ✓</p><button class="btn" style="width:100%" onclick="confermaSaldo(${v},'in pari')">Ok</button>`; return; }
   if(diff > 0){
@@ -1277,16 +1286,17 @@ function anteprimaSaldo(){
       <p class="muted">Di solito sono soldi rimasti da prima, spese stimate in eccesso o una ricarica non ancora fatta. Cosa vuoi farne?</p>
       <button class="btn" style="width:100%;margin-top:4px" onclick="allineaPiu(${v},${diff},'budget')">Aggiungili al budget di questo periodo</button>
       ${conti.map(k=>`<button class="btn sec" style="width:100%;margin-top:8px" onclick="allineaPiu(${v},${diff},'${k.id}')">Mettili da parte → ${esc(k.nome)}</button>`).join('')}
-      <button class="btn sec" style="width:100%;margin-top:8px;background:none;color:var(--muted)" onclick="confermaSaldo(${v},'margine di ${fmt(diff)} lasciato sul conto',${diff})">Lasciali come margine</button>`;
+      <button class="btn sec" style="width:100%;margin-top:8px;background:none;color:var(--muted)" onclick="S.riservaConto=round2(riservaConto()+${diff});confermaSaldo(${v},'${fmt(diff)} aggiunti ai risparmi sul conto')">Lasciali sul conto come risparmio</button>`;
   } else {
     out.innerHTML = `<p>L'app calcola <b>${fmt(min)}</b> → sul conto hai <b class="bad">${fmt(-diff)} in meno</b>.</p>
       <p class="muted">Probabilmente ci sono spese non registrate (contanti, pagamenti senza notifica). Registrandole, il budget dei prossimi giorni si abbassa e torna realistico.</p>
       <button class="btn" style="width:100%;margin-top:4px" onclick="allineaMeno(${v},${-diff})">Registra ${fmt(-diff)} come spese non tracciate</button>
+      ${ris>0 ? `<button class="btn sec" style="width:100%;margin-top:8px" onclick="S.riservaConto=round2(Math.max(0,riservaConto()-${-diff}));confermaSaldo(${v},'${fmt(Math.min(ris,-diff))} tolti dai risparmi sul conto')">Toglili dai risparmi sul conto (${fmt(ris)})</button>` : ''}
       <button class="btn sec" style="width:100%;margin-top:8px;background:none;color:var(--muted)" onclick="confermaSaldo(${v},'differenza di ${fmt(diff)} non registrata')">Non fare niente</button>`;
   }
 }
-function confermaSaldo(valore, esito, margine){
-  S.periodo.saldo = {valore, ts:Date.now(), esito, margine:round2(+margine||0)};
+function confermaSaldo(valore, esito){
+  S.periodo.saldo = {valore, ts:Date.now(), esito};
   save(); closeSheet(); render(); toast('Saldo controllato: '+esito);
 }
 function allineaPiu(valore, diff, dove){
