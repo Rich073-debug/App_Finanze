@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (8)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (9)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -1319,6 +1319,8 @@ function sistemaInizio(){
     <label>Saldo contabile in banca (€)</label><input id="siSaldo" type="text" inputmode="decimal" placeholder="es. 2034,53" oninput="anteprimaInizio()">
     <label>Spese ancora "da contabilizzare" (€)</label><input id="siPend" type="text" inputmode="decimal" placeholder="0,00" oninput="anteprimaInizio()">
     ${pac>0?`<label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="siPac" style="width:auto" checked onchange="anteprimaInizio()"> I bonifici verso gli altri conti (${fmt(pac)}, es. PAC) non sono ancora usciti dal saldo</label>`:''}
+    <label>Il denaro extra avanzato dal mese scorso</label>
+    <select id="siDove" onchange="anteprimaInizio()"><option value="budget">Aggiungilo al budget da spendere</option><option value="risparmio">Tienilo da parte sul conto (non si spende)</option></select>
     <p style="margin:14px 0 4px"><b>Spese di questo mese che restano</b> <span class="muted">(togli la spunta a quelle da cancellare)</span></p>
     ${mov.length? mov.map(m=>`<label style="display:flex;align-items:center;gap:10px;color:var(--text);margin:4px 0"><input type="checkbox" class="siMov" data-id="${m.id}" style="width:auto" ${FINTI.test(m.desc||'')?'':'checked'} onchange="anteprimaInizio()"> ${esc(m.desc||'Spesa')} · ${fmt(m.importo)} <span class="muted">${fDate(new Date(m.ts))}</span></label>`).join('') : '<p class="muted">Nessuna spesa registrata.</p>'}
     <p class="muted" style="font-size:13px">Se manca una spesa di questi giorni, chiudi e aggiungila con + Spesa prima di continuare.</p>
@@ -1344,8 +1346,11 @@ function calcolaInizio(applica){
   const netto = round2(saldo - pend - pacFuori);
   const resta = round2(pc.fissePrincipale + pc.accantonati + pc.budgetResiduo);
   const ris = { netto, resta, avanzo: round2(netto - resta), fisse:pc.fissePrincipale, riserva:pc.accantonati, budget:pc.budgetResiduo, entrateTolte:entrateTolte.length, movTolti:togli.length };
+  ris.dove = document.getElementById('siDove')?.value || 'budget';
+  if(ris.dove==='budget' && ris.avanzo>0){ ris.budget = round2(ris.budget + ris.avanzo); }
   if(applica){
-    S.riservaConto = Math.max(0, ris.avanzo);
+    if(ris.dove==='budget' && ris.avanzo>0) S.entrate.push({id:uid(), data:S.periodo.inizio, importo:ris.avanzo, nota:'Extra avanzato dal mese scorso'});
+    else S.riservaConto = Math.max(0, ris.avanzo);
     if(ris.avanzo < 0) S.movimenti.push({id:uid(), ts:Date.now(), importo:-ris.avanzo, fonte:'manuale', desc:'Differenza con il saldo della banca', cat:'Altro', tipo:'var'});
     S.periodo.saldo = {valore:netto, ts:Date.now(), esito:'conti di inizio mese sistemati'};
     save();
@@ -1355,11 +1360,11 @@ function calcolaInizio(applica){
 function anteprimaInizio(){
   const out = document.getElementById('siEsito'), r = calcolaInizio(false);
   if(!r){ out.innerHTML=''; return; }
-  out.innerHTML = `<div class="row"><div class="grow">Soldi davvero tuoi adesso<div class="s">saldo − spese in attesa${document.getElementById('siPac')?.checked?' − bonifici (PAC)':''}</div></div><div class="amt">${fmt(r.netto)}</div></div>
+  out.innerHTML = `<div class="row"><div class="grow">Soldi sul conto quando sarà uscito tutto<div class="s">saldo contabile − spese in attesa${document.getElementById('siPac')?.checked?' − PAC di questo mese':''}</div></div><div class="amt">${fmt(r.netto)}</div></div>
     <div class="row"><div class="grow">Spese fisse da addebitare</div><div class="amt">${fmt(r.fisse)}</div></div>
-    <div class="row"><div class="grow">Riserva scadenze</div><div class="amt">${fmt(r.riserva)}</div></div>
-    <div class="row"><div class="grow">Budget fino al prossimo stipendio</div><div class="amt">${fmt(r.budget)}</div></div>
-    <div class="row"><div class="grow"><b>${r.avanzo>=0?'Avanzo del mese scorso → risparmi sul conto':'Mancano (verranno tolti dal budget)'}</b></div><div class="amt ${r.avanzo>=0?'ok':'bad'}">${fmt(Math.abs(r.avanzo))}</div></div>
+    <div class="row"><div class="grow">Riserva scadenze<div class="s">dentista, assicurazione… restano sul conto, non si spendono</div></div><div class="amt">${fmt(r.riserva)}</div></div>
+    <div class="row"><div class="grow">Budget da spendere fino al prossimo stipendio</div><div class="amt">${fmt(r.budget)}</div></div>
+    <div class="row"><div class="grow"><b>${r.avanzo<0?'Mancano (verranno tolti dal budget)':(r.dove==='budget'?'Extra del mese scorso (già nel budget qui sopra)':'Extra del mese scorso → tenuto da parte')}</b></div><div class="amt ${r.avanzo>=0?'ok':'bad'}">${fmt(Math.abs(r.avanzo))}</div></div>
     <p class="muted" style="font-size:13px">Verranno tolte ${r.entrateTolte} entrate extra di questo mese e ${r.movTolti} spese senza spunta.</p>
     <button class="btn" style="width:100%;margin-top:8px" onclick="calcolaInizio(true);closeSheet();render();toast('Conti sistemati ✓')">Applica</button>`;
 }
