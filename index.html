@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (9)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (10)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -212,6 +212,10 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <input type="number" inputmode="numeric" min="1" max="28" id="iFine">
     <p class="muted">Lo stipendio arriva tra il 16 e il 21: dividendo il budget fino al 21 resti coperto anche quando arriva tardi.</p>
     <button class="btn" style="width:100%;margin-top:8px" onclick="salvaImpostazioni()">Salva</button>
+  </div>
+  <div class="card" id="cardApp" style="display:none">
+    <h2>App Android</h2>
+    <div id="appStato"></div>
   </div>
   <div class="card">
     <h2>Sicurezza</h2>
@@ -238,7 +242,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <button class="btn" style="width:100%;margin-bottom:10px" onclick="chiediBackup()">💾 Fai backup ora</button>
     <div class="grid2">
       <button class="btn sec" onclick="esporta()">⬇️ Esporta</button>
-      <button class="btn sec" onclick="document.getElementById('fImport').click()">⬆️ Importa</button>
+      <button class="btn sec" onclick="esternoFino=Date.now()+300000;document.getElementById('fImport').click()">⬆️ Importa</button>
     </div>
     <input type="file" id="fImport" accept="application/json" style="display:none" onchange="importa(this)">
   </div>
@@ -732,7 +736,7 @@ function cercaDuplicato(importo, fonte, ts){
   if(fonte==='contanti') return null;
   return S.movimenti.find(m => Math.abs(m.importo-importo)<0.005 && m.fonte!=='contanti' && m.fonte!==fonte && Math.abs(m.ts-ts) < 4*DAY);
 }
-function aggiungiMovimento({importo, fonte='contanti', desc='', cat=null, tipo=null, ts=Date.now(), forza=false}){
+function aggiungiMovimento({importo, fonte='contanti', desc='', cat=null, tipo=null, ts=(ORA_NOTIFICA||Date.now()), forza=false}){
   importo = round2(Math.abs(importo));
   if(!importo) return null;
   if(!forza){
@@ -904,9 +908,10 @@ function pulisciDesc(s){
 }
 function eseguiNotifica(titolo, testo, fonteHint, forza){
   // la stessa notifica può arrivare più volte (la banca la aggiorna, Automate apre più schede): la si conta una volta sola
-  const gia = !forza && (S.logNotifiche||[]).find(n=>n.titolo===titolo && n.testo===testo && (n.fonte||'')===(fonteHint||'') && Date.now()-n.ts < 10*60000 && !/^errore/.test(n.esito||''));
+  const ora = ORA_NOTIFICA||Date.now();
+  const gia = !forza && (S.logNotifiche||[]).find(n=>n.titolo===titolo && n.testo===testo && (n.fonte||'')===(fonteHint||'') && Math.abs(ora-n.ts) < 10*60000 && !/^errore/.test(n.esito||''));
   if(gia){ toast('Notifica già registrata', 'Registra comunque', ()=>eseguiNotifica(titolo, testo, fonteHint, true)); return {azione:'doppione'}; }
-  S.logNotifiche = (S.logNotifiche||[]).concat([{ts:Date.now(), titolo, testo, fonte:fonteHint||''}]).slice(-15);
+  S.logNotifiche = (S.logNotifiche||[]).concat([{ts:ora, titolo, testo, fonte:fonteHint||''}]).slice(-15);
   S.periodo.spostati = S.periodo.spostati||{};
   save(); // la notifica resta nell'elenco anche se qualcosa va storto dopo
   let r;
@@ -925,7 +930,13 @@ function eseguiNotifica(titolo, testo, fonteHint, forza){
     else if(r.verso){ aggiungiSaldoConto(r.verso, r.importo); aggiungiMovimento({importo:r.importo, fonte:'bonifico', desc:r.desc, tipo:'giro', forza:true}); }
     else chiediBonifico(r.importo, r.desc);
   }
-  else if(r.azione==='chiediImporto') chiediImporto(r.desc, r.fonte);
+  else if(r.azione==='chiediImporto'){
+    // spesso lo stesso pagamento è già arrivato da Google Wallet con l'importo: in quel caso non chiediamo niente
+    const parole = (r.desc||'').toLowerCase().split(/[^a-zà-ù0-9]+/).filter(w=>w.length>=4);
+    const gia = S.movimenti.find(m=>m.fonte!=='banca' && m.fonte!=='bonifico' && Math.abs(m.ts-ora) < 3*3600000 && parole.some(w=>(m.desc||'').toLowerCase().includes(w)));
+    if(gia){ r = {azione:'ignora', motivo:'già registrata da '+(gia.fonte||'Wallet')+' ('+fmt(gia.importo)+')'}; toast('✓ '+(gia.desc||'Pagamento')+' già registrato ('+fmt(gia.importo)+')'); }
+    else chiediImporto(r.desc, r.fonte);
+  }
   else if(r.azione==='chiediRicarica') ricaricaBusta();
   else if(r.azione==='ricarica'){ const b = busta(), cb = contiBusta();
     if(saldoBustaTot()===null && cb.length) cb.forEach(c=>{ if(b.saldi[c.id]===undefined) b.saldi[c.id]=0; });
@@ -992,6 +1003,56 @@ function gestisciURL(){
   if(az==='backup') return dopoSblocco(()=>setTimeout(chiediBackup, 200));
   if(az==='voce') dopoSblocco(()=>setTimeout(openVoce, 200));
   if(az==='contanti') dopoSblocco(()=>setTimeout(openAdd, 200));
+}
+
+/* =====================================================================
+   APP ANDROID: le notifiche le legge l'app stessa e le mette in coda;
+   qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
+   ===================================================================== */
+const APP = window.FinanzeAndroid || null;
+var ORA_NOTIFICA = 0;
+let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
+function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
+function scaricaCoda(){
+  if(!APP || bloccato) return;
+  let ev = []; try{ ev = JSON.parse(APP.leggiCoda()||'[]'); }catch(e){ return; }
+  if(!ev.length) return;
+  // prima quelle con l'importo (Wallet, PayPal, SMS), poi quelle della banca che a volte non lo dicono
+  ev.sort((a,b)=>((a.fonte==='banca')-(b.fonte==='banca')) || (a.id-b.id));
+  S = load();
+  for(const e of ev){
+    if(document.getElementById('sheetBg').classList.contains('on')) break; // c'è una domanda aperta: il resto dopo
+    try{ ORA_NOTIFICA = e.ts||Date.now(); eseguiNotifica(e.titolo||'', e.testo||'', e.fonte||undefined); }
+    catch(err){} finally { ORA_NOTIFICA = 0; }
+    APP.confermaCoda(e.id);
+  }
+  render();
+}
+function indietroAndroid(){
+  if(document.getElementById('sheetBg').classList.contains('on')){ closeSheet(); return true; }
+  if(vista!=='oggi'){ document.querySelector('#nav button[data-v="oggi"]')?.click(); return true; }
+  return false;
+}
+function renderApp(){
+  const card = document.getElementById('cardApp'); if(!card) return;
+  if(!APP){ card.style.display='none'; return; }
+  card.style.display='';
+  const ok = APP.permessoNotifiche();
+  document.getElementById('appStato').innerHTML = `
+    <div class="row"><div class="grow"><div class="t">Lettura dei pagamenti</div><div class="s">${ok?'Attiva: Wallet, banca, SMS della banca e PayPal vengono registrati da soli':'Non attiva: dai il permesso perché l\'app legga le notifiche dei pagamenti'}</div></div><div class="amt ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div></div>
+    ${ok?'':`<button class="btn" style="width:100%;margin-top:8px" onclick="esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()">Attiva la lettura dei pagamenti</button>`}
+    <p class="muted" style="font-size:13px">Versione app ${esc(APP.versione())}</p>`;
+}
+function chiediPermessoNotifiche(){
+  if(!APP || APP.permessoNotifiche()) return;
+  if(document.getElementById('sheetBg').classList.contains('on')) return;
+  if(localStorage.getItem('permChiesto')===isoDate(today())) return;
+  localStorage.setItem('permChiesto', isoDate(today()));
+  openSheet(`<h3>📲 Registrazione automatica</h3>
+    <p class="muted">Per registrare da sola le spese, l'app deve leggere le notifiche di Google Wallet, della banca, degli SMS della banca e di PayPal. Le altre notifiche vengono ignorate e nessun dato esce dal telefono.</p>
+    <p class="muted">Nella schermata che si apre cerca <b>Finanze</b> e attiva l'interruttore.</p>
+    <button class="btn" style="width:100%;margin-top:8px" onclick="closeSheet();esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()">Apri le impostazioni</button>
+    <button class="btn sec" style="width:100%;margin-top:10px;background:none;color:var(--muted)" onclick="closeSheet()">Più tardi</button>`);
 }
 
 /* =====================================================================
@@ -1156,7 +1217,7 @@ function render(){
 
 /* ---------------- fogli (sheet) ---------------- */
 function openSheet(html){ if(bloccato){ inAttesa.push(()=>openSheet(html)); return; } document.getElementById('sheet').innerHTML = html; document.getElementById('sheetBg').classList.add('on'); }
-function closeSheet(){ document.getElementById('sheetBg').classList.remove('on'); stopVoce(); }
+function closeSheet(){ document.getElementById('sheetBg').classList.remove('on'); stopVoce(); if(APP) setTimeout(nuoveNotifiche, 400); }
 
 let addCat = 'Generale', addFonte = 'contanti';
 function openAdd(){
@@ -1433,6 +1494,17 @@ function openVoce(){
 function startVoce(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const out = document.getElementById('voceOut');
+  if(APP){
+    out.textContent = 'Ti ascolto…';
+    window.risultatoVoce = lista=>{
+      if(!lista || !lista.length){ out.innerHTML = '<span class="muted">Non ho sentito niente: tocca il microfono e riprova</span>'; return; }
+      out.textContent = lista[0];
+      let v = null; for(const t of lista){ v = importoDaVoce(t); if(v) break; }
+      if(v){ closeSheet(); aggiungiMovimento({importo:v, fonte:'contanti', desc:'', forza:true}); }
+      else out.innerHTML = `Non ho capito l'importo 🤔<br><span class="muted">Riprova toccando il microfono</span>`;
+    };
+    esternoFino = Date.now()+120000; APP.ascolta(); return;
+  }
   if(!SR){ out.innerHTML = '<span class="muted">Il riconoscimento vocale non è disponibile in questo browser. Usa "＋ Spesa".</span>'; return; }
   stopVoce();
   rec = new SR(); rec.lang='it-IT'; rec.interimResults=true; rec.maxAlternatives=3;
@@ -1529,17 +1601,19 @@ function fileBackup(){
   return new File([JSON.stringify(S,null,1)], 'finanze-backup-'+isoDate(today())+'.json', {type:'application/json'});
 }
 function esporta(){
+  if(APP){ const f = fileBackup(); const ok = APP.salvaFile(f.name, JSON.stringify(S,null,1)); closeSheet(); render(); toast(ok?'⬇️ Backup salvato nella cartella Download':'⚠️ Non sono riuscito a salvare il backup'); return; }
   const f = fileBackup();
   const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
   closeSheet(); render(); toast('⬇️ Backup salvato nella cartella Download');
 }
 // invia il backup a Google Drive, email, WhatsApp… (fuori dal telefono)
 async function condividiBackup(){
+  if(APP){ const f = fileBackup(); esternoFino = Date.now()+300000; APP.condividiFile(f.name, JSON.stringify(S,null,1)); closeSheet(); render(); return; }
   const f = fileBackup();
   try{ await navigator.share({files:[f], title:'Backup Finanze'}); closeSheet(); render(); toast('📤 Backup inviato'); }
   catch(e){ if(e.name!=='AbortError'){ esporta(); } }
 }
-function puoCondividere(){ try{ return !!(navigator.canShare && navigator.canShare({files:[new File(['x'],'x.json',{type:'application/json'})]})); }catch(e){ return false; } }
+function puoCondividere(){ if(APP) return true; try{ return !!(navigator.canShare && navigator.canShare({files:[new File(['x'],'x.json',{type:'application/json'})]})); }catch(e){ return false; } }
 function chiediBackup(){
   openSheet(`<h3>💾 Backup del mese</h3>
     <p class="muted">È iniziato un nuovo mese: salva una copia dei tuoi dati. Se perdi il telefono o cancelli Chrome, con questo file recuperi tutto.</p>
@@ -1671,6 +1745,9 @@ costruisciTastiera(document.getElementById('keypad'), async k=>{
   }
 });
 async function sbloccaBio(){
+  if(APP){ if(SEC.credId!=='android') return;
+    window.risultatoImpronta = ok=>{ if(ok) sblocca(); else disegnaPin('Usa il PIN'); };
+    APP.impronta(); return; }
   if(!SEC.credId || !window.PublicKeyCredential) return;
   try{
     await navigator.credentials.get({ publicKey:{
@@ -1718,10 +1795,15 @@ function impostaPin(){
     SEC.salt = salt; SEC.pinHash = await hashPin(buf, salt); SEC.pinLen = lun; if(SEC.ritardo===undefined) SEC.ritardo = 60000;
     salvaSec(); closeSheet(); renderSicurezza();
     toast('🔒 PIN impostato');
-    if(!SEC.credId && window.PublicKeyCredential) setTimeout(()=>openSheet(`<h3>Vuoi usare anche l'impronta?</h3><p class="muted">Potrai sbloccare l'app con impronta o volto, e usare il PIN solo come riserva.</p><div class="grid2" style="margin-top:14px"><button class="btn sec" onclick="closeSheet()">No, solo PIN</button><button class="btn" onclick="closeSheet();attivaBio()">Sì, attiva</button></div>`), 400);
+    if(!SEC.credId && (APP ? APP.improntaDisponibile() : window.PublicKeyCredential)) setTimeout(()=>openSheet(`<h3>Vuoi usare anche l'impronta?</h3><p class="muted">Potrai sbloccare l'app con impronta o volto, e usare il PIN solo come riserva.</p><div class="grid2" style="margin-top:14px"><button class="btn sec" onclick="closeSheet()">No, solo PIN</button><button class="btn" onclick="closeSheet();attivaBio()">Sì, attiva</button></div>`), 400);
   });
 }
 async function attivaBio(){
+  if(APP){
+    if(!APP.improntaDisponibile()){ toast('Nessuna impronta o volto configurati sul telefono'); return; }
+    window.risultatoImpronta = ok=>{ if(ok){ SEC.credId='android'; salvaSec(); renderSicurezza(); toast('👆 Impronta / volto attivati'); } else toast('Attivazione annullata'); };
+    APP.impronta(); return;
+  }
   if(!window.PublicKeyCredential){ toast('Questo browser non supporta l\'impronta'); return; }
   try{
     const ok = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.();
@@ -1748,13 +1830,15 @@ renderSicurezza();
 gestisciURL();
 if(doppioniTolti){ save(); dopoSblocco(()=>toast('🧹 Tolti '+doppioniTolti+' bonifici registrati due volte (saldo dei conti corretto)')); }
 if(!bloccato){ primoAvvio(); controllaBackup(); } else inAttesa.push(primoAvvio, controllaBackup);
+if(APP){ renderApp(); nuoveNotifiche(); dopoSblocco(()=>setTimeout(chiediPermessoNotifiche, 900)); }
 // se l'app è già aperta, un nuovo link con # non ricarica la pagina: lo intercettiamo qui
 window.addEventListener('hashchange', ()=>{ S = load(); gestisciURL(); });
 // aggiorna a mezzanotte / quando torni sull'app
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden){ nascostoDa = Date.now(); mostraNascosti = false; return; }
-  if(attivo() && !bloccato && Date.now()-nascostoDa >= (SEC.ritardo ?? 60000)) blocca();
-  S = load(); render();
+  if(attivo() && !bloccato && Date.now()-nascostoDa >= (SEC.ritardo ?? 60000) && Date.now() > esternoFino) blocca();
+  esternoFino = 0;
+  S = load(); render(); if(APP){ renderApp(); nuoveNotifiche(); }
   if(!bloccato && !document.getElementById('sheetBg').classList.contains('on')) controllaBackup();
 });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
