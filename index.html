@@ -1041,7 +1041,27 @@ function renderApp(){
   document.getElementById('appStato').innerHTML = `
     <div class="row"><div class="grow"><div class="t">Lettura dei pagamenti</div><div class="s">${ok?'Attiva: Wallet, banca, SMS della banca e PayPal vengono registrati da soli':'Non attiva: dai il permesso perché l\'app legga le notifiche dei pagamenti'}</div></div><div class="amt ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div></div>
     ${ok?'':`<button class="btn" style="width:100%;margin-top:8px" onclick="esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()">Attiva la lettura dei pagamenti</button>`}
+    ${typeof APP.diagnostica==='function' ? `<button class="btn sec" style="width:100%;margin-top:8px" onclick="controllaLettura()">🔍 Controlla la lettura</button>` : ''}
     <p class="muted" style="font-size:13px">Versione app ${esc(APP.versione())}</p>`;
+}
+const NOMI_FONTI = {wallet:'Google Wallet', banca:'App della banca (Inbank)', paypal:'PayPal', sms:'Messaggi (SMS della banca)'};
+function quando(ts){ if(!ts) return 'mai'; const d = new Date(ts); return (isoDate(d)===isoDate(today()) ? 'oggi' : fDate(d))+' alle '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}); }
+function controllaLettura(provaInviata){
+  let d = {}; try{ d = JSON.parse(APP.diagnostica()); }catch(e){}
+  const f = d.fonti||{};
+  const riga = (ok, titolo, sotto)=>`<div class="row"><div class="grow"><div class="t">${titolo}</div><div class="s">${sotto}</div></div><div class="amt ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div></div>`;
+  const provaOk = provaInviata && d.prova >= provaInviata;
+  openSheet(`<h3>🔍 Controllo della lettura</h3>
+    ${riga(d.permesso, 'Accesso alle notifiche', d.permesso ? 'Concesso' : 'Non concesso: attivalo per Finanze')}
+    ${riga(d.collegato, 'Servizio di lettura', d.collegato ? 'In ascolto' : (d.permesso ? 'Fermo: riapri l\'app tra qualche secondo; se resta fermo, controlla batteria e avvio automatico' : 'Si avvia quando dai l\'accesso'))}
+    ${Object.keys(NOMI_FONTI).map(k=>{ const x = f[k]||{}; const inst = (x.installate||[]).length>0;
+      return riga(inst, NOMI_FONTI[k], !inst ? 'App non trovata sul telefono' :
+        'Installata · ultima notifica vista: '+quando(x.visto)+(x.presenti?' · ora in barra: '+x.presenti+' ✓':'')); }).join('')}
+    ${provaInviata ? riga(provaOk, 'Notifica di prova', provaOk ? 'Ricevuta: la lettura funziona' : 'Non ancora vista: riprova tra qualche secondo') : ''}
+    ${d.notificheConsentite===false ? '<p class="muted">Per la notifica di prova consenti le notifiche di Finanze (Impostazioni del telefono → App → Finanze → Notifiche).</p>' : ''}
+    <p class="muted" style="font-size:13px">"Ultima notifica vista" si aggiorna appena una di queste app manda una notifica (un pagamento, un SMS della banca…). Se una notifica è ancora nella barra, la vedi subito come "ora in barra".</p>
+    <div class="grid2" style="margin-top:10px"><button class="btn sec" onclick="closeSheet()">Chiudi</button>
+    <button class="btn" onclick="const t=Date.now(); if(!APP.provaLettura()){ toast('Consenti prima le notifiche di Finanze'); return; } setTimeout(()=>controllaLettura(t), 1800)">Notifica di prova</button></div>`);
 }
 function chiediPermessoNotifiche(){
   if(!APP || APP.permessoNotifiche()) return;

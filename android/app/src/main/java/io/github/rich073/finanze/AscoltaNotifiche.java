@@ -8,14 +8,32 @@ import android.service.notification.StatusBarNotification;
 /** Legge le notifiche di Wallet, banca, SMS della banca e PayPal e le mette in coda. */
 public class AscoltaNotifiche extends NotificationListenerService {
 
+    static volatile AscoltaNotifiche attivo;
+
+    @Override
+    public void onListenerConnected() {
+        attivo = this;
+        Diagnosi.connesso(this);
+    }
+
+    @Override
+    public void onListenerDisconnected() {
+        attivo = null;
+    }
+
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         try {
             String pacchetto = sbn.getPackageName();
-            if (pacchetto == null || pacchetto.equals(getPackageName())) return;
+            if (pacchetto == null) return;
+            Notification n = sbn.getNotification();
+            if (pacchetto.equals(getPackageName())) {
+                if (n != null && n.extras != null && n.extras.getBoolean(Diagnosi.EXTRA_PROVA)) Diagnosi.prova(this);
+                return;
+            }
             String fonte = Fonti.fonte(this, pacchetto);
             if (fonte == null) return;
-            Notification n = sbn.getNotification();
+            Diagnosi.visto(this, fonte);
             if (n == null || (n.flags & Notification.FLAG_GROUP_SUMMARY) != 0) return;
             Bundle ex = n.extras;
             if (ex == null) return;

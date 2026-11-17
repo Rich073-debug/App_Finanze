@@ -124,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         inPrimoPiano = this;
         web.onResume();
+        Diagnosi.ricollega(this);
         js("window.nuoveNotifiche&&nuoveNotifiche()");
     }
 

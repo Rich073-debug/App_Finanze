@@ -49,6 +49,16 @@ public class Ponte {
     }
 
     @JavascriptInterface
+    public String diagnostica() {
+        return Diagnosi.json(a);
+    }
+
+    @JavascriptInterface
+    public boolean provaLettura() {
+        return Diagnosi.inviaProva(a);
+    }
+
+    @JavascriptInterface
     public String versione() {
         return BuildConfig.VERSION_NAME;
     }
