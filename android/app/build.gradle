@@ -10,8 +10,9 @@ android {
         applicationId 'io.github.rich073.finanze'
         minSdk 29
         targetSdk 34
-        versionCode (project.findProperty('versionCode') ?: '1').toInteger()
-        versionName '1.' + (project.findProperty('versionCode') ?: '0')
+        def numero = (project.findProperty('versionCode') ?: '1').toString()
+        versionCode = numero.toInteger()
+        versionName = '1.' + numero
     }
 
     signingConfigs {
