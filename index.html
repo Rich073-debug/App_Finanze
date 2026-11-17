@@ -115,7 +115,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
       <div class="stat"><div class="k">Giorni rimasti</div><div class="v" id="sGiorni">—</div></div>
       <div class="stat"><div class="k">Risparmio previsto</div><div class="v" id="sProiez">—</div></div>
     </div>
-    <div class="stat" style="margin-top:10px" id="sRiserva">
+    <div class="stat" style="margin-top:10px;cursor:pointer" id="sRiserva" onclick="editQuote()">
       <div class="k">Messi da parte per le spese future</div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div class="v" id="sRisVal">—</div><div class="k" id="sRisTot"></div></div>
       <div class="bar" style="margin:8px 0 4px;height:6px"><div id="sRisBar" style="width:0%"></div></div>
@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (4)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (5)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -390,9 +390,31 @@ function mesiAllaScadenza(a, inizioStr){
   if(s.getDate() >= i.getDate()) m += 1;
   return Math.max(1, m);
 }
-function quotaAnnuale(a, inizioStr = S.periodo.inizio){
+function quotaAuto(a, inizioStr = S.periodo.inizio){
   const resto = Math.max(0, a.importo - (a.accantonato||0));
   return round2(resto / mesiAllaScadenza(a, inizioStr));
+}
+// quota del mese: quella calcolata dall'app, oppure quella scelta a mano per questo periodo
+function quotaAnnuale(a, inizioStr = S.periodo.inizio){
+  const man = inizioStr===S.periodo.inizio ? (S.periodo.quote||{})[a.id] : undefined;
+  if(man!==undefined && man!==null && !isNaN(man)) return round2(Math.max(0, Math.min(+man, a.importo - (a.accantonato||0))));
+  return quotaAuto(a, inizioStr);
+}
+function editQuote(){
+  if(!S.annuali.length) return;
+  const man = S.periodo.quote||{};
+  openSheet(`<h3>🔒 Soldi per le scadenze</h3>
+    <p class="muted">La quota di questo mese resta sul conto principale e si aggiunge ai "messi da parte" quando carichi il prossimo stipendio. L'app la calcola da sola; se un mese vuoi mettere di più o di meno, cambiala qui (vale solo per questo mese, poi l'app ricalcola le rate successive).</p>
+    ${S.annuali.map(a=>`<div style="margin-top:12px"><div class="t"><b>${esc(a.nome)}</b> <span class="muted">· ${fmt(a.importo)}${a.scadenza?' entro il '+parseDate(a.scadenza).toLocaleDateString('it-IT'):''}</span></div>
+      <div class="s muted">Già messi da parte ${fmt(a.accantonato||0)} · consigliati ${fmt(quotaAuto(a))} questo mese</div>
+      <input id="q_${a.id}" type="text" inputmode="decimal" value="${String(quotaAnnuale(a)).replace('.',',')}"></div>`).join('')}
+    <div class="grid2" style="margin-top:16px"><button class="btn sec" onclick="delete S.periodo.quote;save();closeSheet();render();toast('Quote automatiche ripristinate')">Automatiche</button><button class="btn" onclick="salvaQuote()">Salva</button></div>`);
+}
+function salvaQuote(){
+  const q = {};
+  S.annuali.forEach(a=>{ const v = numeroIt((document.getElementById('q_'+a.id)?.value||'').replace('€',''));
+    if(!isNaN(v) && Math.abs(v - quotaAuto(a)) >= 0.01) q[a.id] = round2(Math.max(0,v)); });
+  S.periodo.quote = q; save(); closeSheet(); render(); toast('Quote di questo mese salvate');
 }
 function calcola(){
   const oggi = today();
@@ -1014,12 +1036,12 @@ function render(){
   document.getElementById('sGiorni').textContent = c.ritardo ? 'Stip. in ritardo' : c.giorniRim;
   // riserva per le scadenze: già accantonato nei periodi passati + quota di questo periodo
   const risTot = S.annuali.reduce((t,a)=>t+a.importo,0);
-  const risVal = S.annuali.reduce((t,a)=>t+Math.min(a.importo,(a.accantonato||0)+quotaAnnuale(a)),0);
+  const risVal = S.annuali.reduce((t,a)=>t+Math.min(a.importo,(a.accantonato||0)),0);
   document.getElementById('sRiserva').style.display = S.annuali.length ? '' : 'none';
   document.getElementById('sRisVal').textContent = fmt(risVal);
   document.getElementById('sRisTot').textContent = 'su '+fmt(risTot)+' di scadenze';
   document.getElementById('sRisBar').style.width = (risTot? Math.min(100,risVal/risTot*100):0)+'%';
-  document.getElementById('sRisDett').textContent = 'Di cui '+fmt(c.quote)+' da questo stipendio. Restano sul conto principale finché non paghi.';
+  document.getElementById('sRisDett').textContent = '+ '+fmt(c.quote)+' di questo mese: si aggiungono quando carichi il prossimo stipendio'+(Object.keys(S.periodo.quote||{}).length?' (quota scelta da te)':'')+'. Restano sul conto principale finché non paghi · tocca per modificare.';
   const pr = document.getElementById('sProiez');
   pr.textContent = (c.proiezione>=0?'+':'')+fmt0(c.proiezione);
   pr.className = 'v ' + (c.proiezione>=0?'ok':'bad');
@@ -1035,7 +1057,7 @@ function render(){
     + (pc.daSpostare>0 ? `<div class="row"><div class="grow"><b>Ancora da spostare</b></div><div class="amt warn">${fmt(pc.daSpostare)}</div></div>` : '');
   document.getElementById('pianoResta').innerHTML =
     `<div class="row"><div class="grow"><div class="t">Spese fisse ancora da addebitare</div><div class="s">${pc.fisseDaPagare.map(f=>esc(f.nome)+' il '+fDate(dataFissa(f))).join(', ')||'Tutte già addebitate'}</div></div><div class="amt">${fmt(pc.fissePrincipale)}</div></div>
-     <div class="row"><div class="grow"><div class="t">Riserva scadenze</div><div class="s">Bollo, assicurazione… (già accantonato + quota di questo mese)</div></div><div class="amt">${fmt(pc.accantonati)}</div></div>
+     <div class="row"><div class="grow"><div class="t">Riserva scadenze</div><div class="s">Già messi da parte ${fmt(pc.accantonati - c.quote)} + quota di questo mese ${fmt(c.quote)}</div></div><div class="amt">${fmt(pc.accantonati)}</div></div>
      <div class="row"><div class="grow"><div class="t">Budget spese rimasto</div><div class="s">Fino al ${fDate(c.fine)}</div></div><div class="amt">${fmt(pc.budgetResiduo)}</div></div>
      <div class="row"><div class="grow"><b>Totale minimo sul conto</b><div class="s">Se sul conto hai di più, la differenza è margine extra</div></div><div class="amt ok">${fmt(pc.fissePrincipale+pc.accantonati+pc.budgetResiduo)}</div></div>
      ${daSpostareOra()>0 ? `<div class="row"><div class="grow"><div class="t">Ancora da spostare</div><div class="s">Sono ancora sul conto finché non fai i bonifici</div></div><div class="amt">${fmt(daSpostareOra())}</div></div>` : ''}
