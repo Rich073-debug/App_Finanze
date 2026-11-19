@@ -46,10 +46,23 @@ final class Diagnosi {
     }
 
     /** Se il permesso c'è ma il servizio è stato fermato (es. dal risparmio batteria), lo ricollega. */
+    private static final long AVVIO = android.os.SystemClock.elapsedRealtime();
+    private static long ultimoRiavvio = 0;
+
     static void ricollega(Context c) {
         try {
-            if (Coda.permesso(c) && AscoltaNotifiche.attivo == null) {
-                NotificationListenerService.requestRebind(new ComponentName(c, AscoltaNotifiche.class));
+            if (!Coda.permesso(c) || AscoltaNotifiche.attivo != null) return;
+            ComponentName cn = new ComponentName(c, AscoltaNotifiche.class);
+            NotificationListenerService.requestRebind(cn);
+            long ora = android.os.SystemClock.elapsedRealtime();
+            // se dopo qualche secondo non si è ancora collegato, spegne e riaccende il servizio:
+            // Android allora è obbligato a ricollegarlo (stesso effetto di togliere e rimettere il permesso)
+            if (ora - AVVIO > 5000 && ora - ultimoRiavvio > 60000) {
+                ultimoRiavvio = ora;
+                android.content.pm.PackageManager pm = c.getPackageManager();
+                pm.setComponentEnabledSetting(cn, android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, android.content.pm.PackageManager.DONT_KILL_APP);
+                pm.setComponentEnabledSetting(cn, android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED, android.content.pm.PackageManager.DONT_KILL_APP);
+                NotificationListenerService.requestRebind(cn);
             }
         } catch (Exception ignored) {
         }
