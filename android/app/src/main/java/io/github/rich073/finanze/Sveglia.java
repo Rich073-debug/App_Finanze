@@ -25,6 +25,7 @@ public class Sveglia extends JobService {
 
     @Override
     public boolean onStartJob(JobParameters p) {
+        Diagnosi.controllaEAvvisa(this);
         Diagnosi.ricollega(this);
         AscoltaNotifiche.recupera(this);
         return false;

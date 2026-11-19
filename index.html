@@ -95,6 +95,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 <main>
 <!-- ============ OGGI ============ -->
 <section class="view on" id="v-oggi">
+  <div id="avvisoLettura"></div>
   <div class="card hero">
     <div class="label">Puoi ancora spendere oggi</div>
     <div class="big" id="residuoOggi">—</div>
@@ -195,7 +196,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>19 novembre 2026</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>19 novembre 2026 (2)</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -1034,6 +1035,21 @@ function indietroAndroid(){
   if(vista!=='oggi'){ document.querySelector('#nav button[data-v="oggi"]')?.click(); return true; }
   return false;
 }
+// riquadro rosso in Oggi se l'app Android non sta leggendo i pagamenti
+let controlloLetturaT = null;
+function controllaAvvisoLettura(){
+  const box = document.getElementById('avvisoLettura'); if(!box) return;
+  if(!APP || typeof APP.diagnostica!=='function'){ box.innerHTML=''; return; }
+  clearTimeout(controlloLetturaT);
+  // il servizio può metterci qualche secondo a ricollegarsi dopo l'apertura
+  controlloLetturaT = setTimeout(()=>{
+    let d = {}; try{ d = JSON.parse(APP.diagnostica()); }catch(e){ return; }
+    const ok = d.permesso && d.collegato;
+    box.innerHTML = ok ? '' : `<div class="card" style="border:1px solid var(--bad,#ff6b6b);margin-bottom:12px" onclick="${d.permesso?'controllaLettura()':'esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()'}">
+      <b>⚠️ Finanze non sta leggendo i pagamenti</b>
+      <div class="muted" style="margin-top:4px">${d.permesso ? 'Il telefono ha fermato la lettura. Tocca qui: se resta ferma, togli e rimetti "Accesso alle notifiche" per Finanze.' : 'L\'accesso alle notifiche è stato tolto: tocca qui per riattivarlo.'} Intanto aggiungi le spese con + Spesa.</div></div>`;
+  }, 4000);
+}
 function renderApp(){
   const card = document.getElementById('cardApp'); if(!card) return;
   if(!APP){ card.style.display='none'; return; }
@@ -1851,7 +1867,7 @@ renderSicurezza();
 gestisciURL();
 if(doppioniTolti){ save(); dopoSblocco(()=>toast('🧹 Tolti '+doppioniTolti+' bonifici registrati due volte (saldo dei conti corretto)')); }
 if(!bloccato){ primoAvvio(); controllaBackup(); } else inAttesa.push(primoAvvio, controllaBackup);
-if(APP){ renderApp(); nuoveNotifiche(); dopoSblocco(()=>setTimeout(chiediPermessoNotifiche, 900)); }
+if(APP){ renderApp(); nuoveNotifiche(); controllaAvvisoLettura(); dopoSblocco(()=>setTimeout(chiediPermessoNotifiche, 900)); }
 // se l'app è già aperta, un nuovo link con # non ricarica la pagina: lo intercettiamo qui
 window.addEventListener('hashchange', ()=>{ S = load(); gestisciURL(); });
 // aggiorna a mezzanotte / quando torni sull'app
@@ -1859,7 +1875,7 @@ document.addEventListener('visibilitychange', ()=>{
   if(document.hidden){ nascostoDa = Date.now(); mostraNascosti = false; return; }
   if(attivo() && !bloccato && Date.now()-nascostoDa >= (SEC.ritardo ?? 60000) && Date.now() > esternoFino) blocca();
   esternoFino = 0;
-  S = load(); render(); if(APP){ renderApp(); nuoveNotifiche(); }
+  S = load(); render(); if(APP){ renderApp(); nuoveNotifiche(); controllaAvvisoLettura(); }
   if(!bloccato && !document.getElementById('sheetBg').classList.contains('on')) controllaBackup();
 });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});

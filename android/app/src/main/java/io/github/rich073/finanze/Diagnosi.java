@@ -33,7 +33,51 @@ final class Diagnosi {
     }
 
     static void connesso(Context c) {
-        sp(c).edit().putLong("connesso", System.currentTimeMillis()).apply();
+        sp(c).edit().putLong("connesso", System.currentTimeMillis()).putLong("fermoDa", 0).apply();
+        NotificationManagerCompat.from(c).cancel(ID_AVVISO_FERMO);
+    }
+
+    private static final int ID_AVVISO_FERMO = 7304;
+
+    /** Chiamato ogni 15 minuti: se la lettura resta ferma (o il permesso è stato tolto) avvisa con una notifica. */
+    static void controllaEAvvisa(Context c) {
+        SharedPreferences p = sp(c);
+        long ora = System.currentTimeMillis();
+        boolean permesso = Coda.permesso(c);
+        if (permesso && AscoltaNotifiche.attivo != null) {
+            p.edit().putLong("fermoDa", 0).apply();
+            NotificationManagerCompat.from(c).cancel(ID_AVVISO_FERMO);
+            return;
+        }
+        long fermoDa = p.getLong("fermoDa", 0);
+        if (fermoDa == 0) {
+            p.edit().putLong("fermoDa", ora).apply();
+            return;
+        }
+        // ferma da più di 20 minuti; al massimo un avviso ogni 6 ore
+        if (ora - fermoDa < 20 * 60 * 1000L || ora - p.getLong("avvisato", 0) < 6 * 3600 * 1000L) return;
+        try {
+            NotificationManagerCompat nm = NotificationManagerCompat.from(c);
+            if (!nm.areNotificationsEnabled()) return;
+            NotificationManager sistema = c.getSystemService(NotificationManager.class);
+            if (sistema != null && sistema.getNotificationChannel("avvisi") == null) {
+                sistema.createNotificationChannel(new NotificationChannel("avvisi", "Problemi di lettura", NotificationManager.IMPORTANCE_DEFAULT));
+            }
+            android.content.Intent apri = new android.content.Intent(c, MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            android.app.PendingIntent pi = android.app.PendingIntent.getActivity(c, 1, apri, android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+            String testo = permesso ? "Il telefono ha fermato la lettura dei pagamenti: tocca per sistemare"
+                    : "L'accesso alle notifiche è stato tolto: tocca per riattivarlo";
+            nm.notify(ID_AVVISO_FERMO, new NotificationCompat.Builder(c, "avvisi")
+                    .setSmallIcon(R.drawable.ic_notifica)
+                    .setContentTitle("⚠️ Finanze non sta leggendo i pagamenti")
+                    .setContentText(testo)
+                    .setStyle(new NotificationCompat.BigTextStyle().bigText(testo))
+                    .setContentIntent(pi)
+                    .setAutoCancel(true)
+                    .build());
+            p.edit().putLong("avvisato", ora).apply();
+        } catch (SecurityException ignored) {
+        }
     }
 
     static void visto(Context c, String fonte) {
