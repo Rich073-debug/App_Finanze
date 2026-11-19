@@ -114,6 +114,8 @@ public class MainActivity extends AppCompatActivity {
 
         if (stato == null || web.restoreState(stato) == null) web.loadUrl(INDIRIZZO);
 
+        Sveglia.programma(this);
+
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
         }
@@ -125,6 +127,7 @@ public class MainActivity extends AppCompatActivity {
         inPrimoPiano = this;
         web.onResume();
         Diagnosi.ricollega(this);
+        AscoltaNotifiche.recupera(this);
         js("window.nuoveNotifiche&&nuoveNotifiche()");
     }
 

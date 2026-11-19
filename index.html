@@ -195,7 +195,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>17 novembre 2026 (10)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>19 novembre 2026</b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -734,7 +734,8 @@ function cercaDuplicato(importo, fonte, ts){
   // stesso importo registrato da un'altra fonte automatica negli ultimi 4 giorni
   // (la notifica della carta fisica a volte arriva in ritardo)
   if(fonte==='contanti') return null;
-  return S.movimenti.find(m => Math.abs(m.importo-importo)<0.005 && m.fonte!=='contanti' && m.fonte!==fonte && Math.abs(m.ts-ts) < 4*DAY);
+  // oppure la stessa notifica ripescata dall'app Android (stessa fonte, stesso momento)
+  return S.movimenti.find(m => Math.abs(m.importo-importo)<0.005 && m.fonte!=='contanti' && ((m.fonte!==fonte && Math.abs(m.ts-ts) < 4*DAY) || (m.fonte===fonte && Math.abs(m.ts-ts) < 5*60000)));
 }
 function aggiungiMovimento({importo, fonte='contanti', desc='', cat=null, tipo=null, ts=(ORA_NOTIFICA||Date.now()), forza=false}){
   importo = round2(Math.abs(importo));

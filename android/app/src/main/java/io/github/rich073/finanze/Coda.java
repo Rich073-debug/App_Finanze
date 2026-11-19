@@ -30,9 +30,22 @@ final class Coda {
     }
 
     /** Aggiunge una notifica. Restituisce false se è un doppione arrivato da poco. */
-    static synchronized boolean aggiungi(Context c, String fonte, String titolo, String testo, long ts) {
+    static synchronized boolean aggiungi(Context c, String fonte, String titolo, String testo, long ts, String chiave) {
         try {
             SharedPreferences p = sp(c);
+            // ogni notifica (identificata dal telefono) si mette in coda una volta sola, anche se la si ripesca più tardi
+            JSONObject chiavi = new JSONObject(p.getString("chiavi", "{}"));
+            long adesso = System.currentTimeMillis();
+            JSONObject chiaviTenute = new JSONObject();
+            java.util.Iterator<String> itc = chiavi.keys();
+            while (itc.hasNext()) {
+                String k = itc.next();
+                long t = chiavi.optLong(k);
+                if (adesso - t < 7L * 24 * 3600 * 1000) chiaviTenute.put(k, t);
+            }
+            if (chiave != null && chiaviTenute.has(chiave)) return false;
+            if (chiave != null) chiaviTenute.put(chiave, adesso);
+            p.edit().putString("chiavi", chiaviTenute.toString()).commit();
             JSONArray eventi = new JSONArray(p.getString("eventi", "[]"));
             JSONArray recenti = new JSONArray(p.getString("recenti", "[]"));
             String firma = fonte + "|" + titolo + "|" + testo;
