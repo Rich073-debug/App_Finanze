@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         web = new WebView(this);
-        web.setBackgroundColor(0xFF0F1714);
+        web.setBackgroundColor(0xFF111827);
         setContentView(web);
 
         WebSettings s = web.getSettings();
@@ -182,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Spiccioli")
+                .setTitle("NotiPay")
                 .setSubtitle("Sblocca con impronta o volto")
                 .setNegativeButtonText("Usa il PIN")
                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)

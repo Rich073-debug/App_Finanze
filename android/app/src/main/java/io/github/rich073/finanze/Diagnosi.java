@@ -69,7 +69,7 @@ final class Diagnosi {
                     : "L'accesso alle notifiche è stato tolto: tocca per riattivarlo";
             nm.notify(ID_AVVISO_FERMO, new NotificationCompat.Builder(c, "avvisi")
                     .setSmallIcon(R.drawable.ic_notifica)
-                    .setContentTitle("⚠️ Spiccioli non sta leggendo i pagamenti")
+                    .setContentTitle("⚠️ NotiPay non sta leggendo i pagamenti")
                     .setContentText(testo)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(testo))
                     .setContentIntent(pi)
@@ -171,7 +171,7 @@ final class Diagnosi {
             extra.putBoolean(EXTRA_PROVA, true);
             nm.notify(ID_PROVA, new NotificationCompat.Builder(c, "prova")
                     .setSmallIcon(R.drawable.ic_notifica)
-                    .setContentTitle("Prova Spiccioli")
+                    .setContentTitle("Prova NotiPay")
                     .setContentText("Notifica di prova: se l'app la vede, la lettura funziona")
                     .addExtras(extra)
                     .setAutoCancel(true)

@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1714">
-<title>Spiccioli</title>
+<meta name="theme-color" content="#111827">
+<title>NotiPay</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{
-  --bg:#0f1714; --card:#17221e; --card2:#1e2c27; --line:#2a3a34;
-  --text:#e8f0ec; --muted:#8fa39a; --accent:#3ee6b4; --accent-d:#1fae86;
-  --warn:#f5b84a; --bad:#ff6b6b; --radius:18px;
+  /* NotiPay: indaco scuro, azzurro cielo per azioni e conferme, lime per il margine di oggi, ambra per l'attenzione, corallo per gli avvisi */
+  --bg:#111827; --card:#1F2937; --card2:#273449; --line:#334155;
+  --text:#F8FAFC; --muted:#94A3B8; --accent:#38BDF8; --accent-d:#0EA5E9; --on-accent:#0B1220;
+  --lime:#AACC00; --warn:#F59E0B; --bad:#F97316; --radius:18px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px}
@@ -21,24 +22,24 @@ header{padding:calc(14px + env(safe-area-inset-top)) 18px 6px;display:flex;justi
 header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.2px}
 header small{color:var(--muted);font-size:13px}
 main{padding:6px 14px}
-.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
 .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:0 0 10px;font-weight:600}
 .hero{text-align:center;padding:22px 16px}
 .hero .label{color:var(--muted);font-size:14px}
 .hero .big{font-size:52px;font-weight:800;margin:6px 0 2px;letter-spacing:-1px;font-variant-numeric:tabular-nums}
 .hero .sub{color:var(--muted);font-size:14px}
-.ok{color:var(--accent)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+.ok{color:var(--accent)} .lime{color:var(--lime)} .warn{color:var(--warn)} .bad{color:var(--bad)}
 .bar{height:10px;background:var(--card2);border-radius:6px;overflow:hidden;margin:14px 0 4px}
-.bar>div{height:100%;background:var(--accent);border-radius:6px;transition:width .3s}
+.bar>div{height:100%;background:var(--lime);border-radius:6px;transition:width .3s}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .stat{background:var(--card2);border-radius:14px;padding:12px}
 .stat .k{font-size:12px;color:var(--muted)} .stat .v{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 button{font:inherit;color:inherit;border:0;cursor:pointer}
-.btn{background:var(--accent);color:#06261c;font-weight:700;border-radius:14px;padding:14px;font-size:16px}
+.btn{background:var(--accent);color:var(--on-accent);font-weight:700;border-radius:14px;padding:14px;font-size:16px}
 .btn.sec{background:var(--card2);color:var(--text)}
 .btn.small{padding:8px 12px;font-size:14px;border-radius:10px}
-.btn.danger{background:#3a1f22;color:var(--bad)}
+.btn.danger{background:#3b2318;color:var(--bad)}
 .row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);gap:10px}
 .row:last-child{border-bottom:0}
 .row .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -46,8 +47,8 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 .row .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .row .grow{flex:1;min-width:0}
 .tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:8px;background:var(--card2);color:var(--muted);margin-right:4px}
-.tag.y{background:#3a3016;color:var(--warn)}
-nav{position:fixed;bottom:0;left:0;right:0;background:#121c18ee;backdrop-filter:blur(10px);display:flex;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tag.y{background:#3a2f12;color:var(--warn)}
+nav{position:fixed;bottom:0;left:0;right:0;background:#111827ee;backdrop-filter:blur(10px);display:flex;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav button{flex:1;background:none;padding:10px 0 12px;color:var(--muted);font-size:11.5px;display:flex;flex-direction:column;align-items:center;gap:3px}
 nav button svg{width:24px;height:24px}
 nav button.on{color:var(--accent)}
@@ -61,13 +62,13 @@ input:focus,select:focus{outline:2px solid var(--accent-d);border-color:transpar
 .sheet h3{margin:0 0 6px;font-size:19px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .chip{background:var(--card2);padding:8px 12px;border-radius:20px;font-size:14px}
-.chip.on{background:var(--accent);color:#06261c;font-weight:700}
-.toast{position:fixed;left:14px;right:14px;bottom:calc(86px + env(safe-area-inset-bottom));background:#24352f;border:1px solid var(--line);border-radius:14px;padding:13px 15px;z-index:30;display:none;align-items:center;gap:10px;box-shadow:0 8px 30px #0008}
+.chip.on{background:var(--accent);color:var(--on-accent);font-weight:700}
+.toast{position:fixed;left:14px;right:14px;bottom:calc(86px + env(safe-area-inset-bottom));background:#273449;border:1px solid var(--line);border-radius:14px;padding:13px 15px;z-index:30;display:none;align-items:center;gap:10px;box-shadow:0 8px 30px #0008}
 .toast.on{display:flex}
 .toast span{flex:1}
 .mic{width:96px;height:96px;border-radius:50%;background:var(--accent);margin:18px auto;display:flex;align-items:center;justify-content:center}
 .mic.rec{animation:pulse 1s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 #3ee6b488}100%{box-shadow:0 0 0 22px #3ee6b400}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #38bdf888}100%{box-shadow:0 0 0 22px #38bdf800}}
 .muted{color:var(--muted);font-size:13.5px;line-height:1.45}
 .amount-input{font-size:36px;font-weight:800;text-align:center;padding:14px}
 code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;word-break:break-all}
@@ -83,6 +84,15 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 .keypad button{height:76px;border-radius:50%;background:var(--card2);font-size:28px;font-weight:600}
 .keypad button.t{background:none;font-size:15px;color:var(--muted)}
 .seg button.on{background:var(--card);color:var(--text);font-weight:600}
+.card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
+.card-h h2{margin:0}
+.info{width:26px;height:26px;border-radius:50%;background:var(--card2);color:var(--muted);font-size:14px;font-weight:700;font-family:Georgia,serif;font-style:italic;flex-shrink:0}
+.link{background:none;color:var(--accent);font-size:14px;font-weight:600;padding:2px 0}
+.ico{width:36px;height:36px;border-radius:11px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.row.ic{justify-content:flex-start}
+.row.ic .amt{margin-left:auto}
+.totale{background:var(--card2);border-radius:14px;padding:12px 14px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.totale .v{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -98,7 +108,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
   <div id="avvisoLettura"></div>
   <div id="avvisoVersione"></div>
   <div class="card hero">
-    <div class="label">Puoi ancora spendere oggi</div>
+    <div class="label">Puoi spendere oggi</div>
     <div class="big" id="residuoOggi">—</div>
     <div class="sub" id="budgetOggiTxt"></div>
     <div class="bar"><div id="barOggi" style="width:0%"></div></div>
@@ -110,27 +120,42 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
   </div>
 
   <div class="card">
-    <h2>Periodo stipendio</h2>
+    <div class="card-h"><h2>Periodo</h2><button class="info" onclick="infoPeriodo()" aria-label="Dettagli">i</button></div>
     <div class="grid2">
-      <div class="stat"><div class="k">Disponibile periodo</div><div class="v" id="sDisp">—</div></div>
+      <div class="stat"><div class="k">Disponibile</div><div class="v" id="sDisp">—</div></div>
       <div class="stat"><div class="k">Già speso</div><div class="v" id="sSpeso">—</div></div>
       <div class="stat"><div class="k">Giorni rimasti</div><div class="v" id="sGiorni">—</div></div>
       <div class="stat"><div class="k">Risparmio previsto</div><div class="v" id="sProiez">—</div></div>
     </div>
     <div class="stat" style="margin-top:10px;cursor:pointer" id="sRiserva" onclick="editQuote()">
-      <div class="k">Messi da parte per le spese future</div>
+      <div class="k">Accantonati per le scadenze</div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div class="v" id="sRisVal">—</div><div class="k" id="sRisTot"></div></div>
-      <div class="bar" style="margin:8px 0 4px;height:6px"><div id="sRisBar" style="width:0%"></div></div>
+      <div class="bar" style="margin:8px 0 4px;height:6px"><div id="sRisBar" style="width:0%;background:var(--accent)"></div></div>
       <div class="k" id="sRisDett"></div>
     </div>
-    <p class="muted" id="periodoTxt" style="margin:12px 0 0"></p>
+  </div>
+
+  <div class="card" id="cardPrev">
+    <div class="card-h"><h2>Prossime scadenze</h2><button class="link" onclick="vai('fisse')">Tutte ›</button></div>
+    <div id="prevList"></div>
   </div>
 
   <div class="card">
-    <h2>Soldi da spostare</h2>
-    <div id="pianoSposta"></div>
-    <h2 style="margin-top:16px">Sul conto principale devono restare</h2>
+    <div class="card-h"><h2>Ultimi movimenti</h2><button class="link" onclick="vai('mov')">Tutti ›</button></div>
+    <div id="ultimi"></div>
+  </div>
+</section>
+
+<!-- ============ CONTI ============ -->
+<section class="view" id="v-conti">
+  <div class="card">
+    <div class="card-h"><h2>Conto principale</h2><button class="info" onclick="infoConto()" aria-label="Dettagli">i</button></div>
     <div id="pianoResta"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Da spostare</h2></div>
+    <div id="pianoSposta"></div>
   </div>
 
   <div class="card" id="cardSaldi">
@@ -141,16 +166,6 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
   <div class="card" id="cardBusta">
     <h2 id="bustaTitolo">Prepagata / PayPal</h2>
     <div id="bustaBody"></div>
-  </div>
-
-  <div class="card" id="cardPrev">
-    <h2>Previsioni e scadenze</h2>
-    <div id="prevList"></div>
-  </div>
-
-  <div class="card">
-    <h2>Ultimi movimenti</h2>
-    <div id="ultimi"></div>
   </div>
 </section>
 
@@ -193,30 +208,23 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 
 <!-- ============ IMPOSTAZIONI ============ -->
 <section class="view" id="v-imp">
-  <div class="card" id="cardGuida">
-    <h2>Guida</h2>
-    <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
-    <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b id="verWeb"></b></p>
-    <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
-  </div>
   <div class="card">
     <h2>Budget</h2>
-    <label>Stipendio fisso mensile (€)</label>
+    <label>Stipendio mensile (€)</label>
     <input type="number" inputmode="decimal" step="0.01" id="iStip">
-    <label>Risparmio mensile da mettere da parte (facoltativo, €)</label>
+    <label>Risparmio mensile per conto (€, facoltativo)</label>
     <div id="iRispConti"></div>
-    <p class="muted">Non è il saldo: è quanto vuoi spostare ogni mese su questi conti. Viene tolto dal budget e compare in "Soldi da spostare". Lascia 0 se non ti serve. I saldi dei conti li trovi in <b>Oggi → I miei conti</b>.</p>
-    <label>Carte del conto principale (ultime cifre, separate da virgola)</label>
+    <p class="muted">Compare in Conti → Da spostare.</p>
+    <label>Ultime cifre delle carte del conto principale</label>
     <input id="iCarte" placeholder="es. 1234">
-    <p class="muted">I pagamenti con altre carte (Revolut, Postepay, prepagata) vengono ignorati: non pesano sul budget.</p>
-    <label>Il periodo finisce il giorno… del mese successivo</label>
+    <p class="muted">Le altre carte non pesano sul budget.</p>
+    <label>Fine del ciclo (giorno del mese dopo)</label>
     <input type="number" inputmode="numeric" min="1" max="28" id="iFine">
-    <p class="muted">Lo stipendio arriva tra il 16 e il 21: dividendo il budget fino al 21 resti coperto anche quando arriva tardi.</p>
+    <p class="muted">Con il 21 sei coperto anche se lo stipendio tarda.</p>
     <button class="btn" style="width:100%;margin-top:8px" onclick="salvaImpostazioni()">Salva</button>
   </div>
   <div class="card" id="cardApp" style="display:none">
-    <h2>App Android</h2>
+    <h2>App</h2>
     <div id="appStato"></div>
   </div>
   <div class="card">
@@ -224,23 +232,22 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <div id="secStato"></div>
   </div>
   <div class="card">
-    <h2>Categorie</h2>
-    <p class="muted" style="margin-top:0">Tocca una categoria per rinominarla o eliminarla, o per aggiungere parole che la fanno scegliere da sola (es. "decathlon" → Sport).</p>
-    <div id="catList"></div>
-    <button class="btn sec small" style="margin-top:10px" onclick="editCategoria()">＋ Aggiungi categoria</button>
-  </div>
-  <div class="card">
-    <h2>I miei conti</h2>
-    <label>Conto principale (ultime cifre del c/c)</label>
+    <h2>Conti e carte</h2>
+    <label>Ultime cifre del conto principale</label>
     <input id="iPrinc" placeholder="es. 123">
-    <p class="muted">Conti secondari: i loro movimenti non pesano sul budget. Tocca per modificare nome e numeri (conto o carte).</p>
+    <p class="muted">Gli altri conti non pesano sul budget.</p>
     <div id="contiList"></div>
     <button class="btn sec small" style="margin-top:10px" onclick="editConto()">＋ Aggiungi conto</button>
   </div>
   <div class="card">
+    <h2>Categorie</h2>
+    <p class="muted" style="margin-top:0">Tocca per rinominare o aggiungere parole automatiche.</p>
+    <div id="catList"></div>
+    <button class="btn sec small" style="margin-top:10px" onclick="editCategoria()">＋ Aggiungi categoria</button>
+  </div>
+  <div class="card">
     <h2>Backup</h2>
-    <p class="muted" style="margin-top:0">I dati sono salvati solo su questo telefono. Ogni mese, alla prima apertura, l'app ti propone il backup. Meglio salvarlo su Google Drive: così resta al sicuro anche se perdi il telefono.</p>
-    <p class="muted" id="ultimoBk"></p>
+    <p class="muted" style="margin-top:0" id="ultimoBk"></p>
     <button class="btn" style="width:100%;margin-bottom:10px" onclick="chiediBackup()">💾 Fai backup ora</button>
     <div class="grid2">
       <button class="btn sec" onclick="esporta()">⬇️ Esporta</button>
@@ -249,20 +256,37 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <input type="file" id="fImport" accept="application/json" style="display:none" onchange="importa(this)">
   </div>
   <div class="card">
-    <h2>Collegamento automatico (Automate)</h2>
-    <p class="muted" style="margin-top:0">L'app accetta comandi tramite link. Automate (o MacroDroid) li apre quando arriva una notifica o un SMS della banca.</p>
-    <p class="muted">Notifica / SMS (l'app capisce da sola importo, negozio e tipo):<br><code id="lnkNotif"></code></p>
-    <p class="muted">Spesa diretta:<br><code id="lnkAdd"></code></p>
-    <p class="muted">Dettatura vocale:<br><code id="lnkVoce"></code></p>
-    <label>Prova il riconoscimento: incolla il testo di una notifica</label>
-    <input id="iTestNotif" placeholder="es. Supermercato 9,21 € …">
-    <button class="btn sec small" style="margin-top:8px" onclick="testNotifica()">Analizza</button>
-    <p class="muted" id="testOut"></p>
-    <label>Ultime notifiche ricevute</label>
-    <div id="logNotif"></div>
+    <div class="row ic" onclick="vai('diag')" style="cursor:pointer"><div class="ico">🛠</div><div class="grow"><div class="t">Diagnostica e automazioni</div><div class="s">Lettura notifiche, prove, registro</div></div><div class="amt">›</div></div>
+    <div class="row ic" id="rigaGuida"><div class="ico">📖</div><div class="grow"><a href="guida.html" style="color:inherit;text-decoration:none"><div class="t">Guida</div><div class="s">Installazione e uso</div></a></div><div class="amt">›</div></div>
+    <div class="row ic" id="rigaVersione" onclick="aggiornaApp()" style="cursor:pointer"><div class="ico">🔄</div><div class="grow"><div class="t">Versione <span id="verWeb"></span></div><div class="s">Tocca per cercare aggiornamenti</div></div></div>
   </div>
   <div class="card">
     <button class="btn danger" style="width:100%" onclick="resetTutto()">Cancella tutti i dati</button>
+  </div>
+</section>
+
+<!-- ============ DIAGNOSTICA ============ -->
+<section class="view" id="v-diag">
+  <button class="link" style="margin:0 0 10px 4px" onclick="vai('imp')">‹ Impostazioni</button>
+  <div class="card" id="diagApp" style="display:none">
+    <h2>Lettura notifiche</h2>
+    <button class="btn sec" style="width:100%" onclick="controllaLettura()">🔍 Controlla la lettura</button>
+  </div>
+  <div class="card">
+    <h2>Prova una notifica</h2>
+    <input id="iTestNotif" placeholder="Incolla il testo, es. Supermercato 9,21 €">
+    <button class="btn sec small" style="margin-top:8px" onclick="testNotifica()">Analizza</button>
+    <p class="muted" id="testOut"></p>
+  </div>
+  <div class="card">
+    <h2>Ultime notifiche ricevute</h2>
+    <div id="logNotif"></div>
+  </div>
+  <div class="card" id="diagLink">
+    <h2>Link per Automate / MacroDroid</h2>
+    <p class="muted" style="margin-top:0">Notifica / SMS<br><code id="lnkNotif"></code></p>
+    <p class="muted">Spesa diretta<br><code id="lnkAdd"></code></p>
+    <p class="muted">Dettatura<br><code id="lnkVoce"></code></p>
   </div>
 </section>
 </main>
@@ -270,6 +294,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 <nav id="nav">
   <button class="on" data-v="oggi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Oggi</button>
   <button data-v="mov"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Movimenti</button>
+  <button data-v="conti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></svg>Conti</button>
   <button data-v="fisse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Fisse</button>
   <button data-v="imp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Impostazioni</button>
 </nav>
@@ -277,7 +302,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="lock" id="lock">
   <div style="font-size:44px">🔒</div>
-  <h2 style="margin:10px 0 0;font-size:22px">Spiccioli</h2>
+  <h2 style="margin:10px 0 0;font-size:22px">NotiPay</h2>
   <p class="muted" id="lockMsg" style="margin:6px 0 0;text-align:center">Inserisci il PIN</p>
   <div class="dots" id="lockDots"></div>
   <div class="keypad" id="keypad"></div>
@@ -523,9 +548,9 @@ const MASCHERA = '<span class="muted">•••• €</span>';
 function renderSaldi(){
   const el = document.getElementById('saldiBody'); if(!el) return;
   const pr = S.periodo.saldo;
-  const righe = [{nome:'Conto principale', uso:pr ? 'stimato dall\'app · controllato il '+fDate(new Date(pr.ts))+' · tocca per allineare' : 'tocca per inserire il saldo', v: pr ? saldoPrevisto() : null, click:'allineaSaldo()', nascosto:!!S.impostazioni.nascondiPrincipale}]
+  const righe = [{nome:'Conto principale', uso:pr ? 'Stima · controllato il '+fDM(new Date(pr.ts)) : 'Tocca per inserire il saldo', v: pr ? saldoPrevisto() : null, click:'allineaSaldo()', nascosto:!!S.impostazioni.nascondiPrincipale}]
     .concat(S.conti.map(c=>{ const v = saldoConto(c);
-      return {nome:c.nome, uso:(c.uso||'')+(c.busta?' · si aggiorna con PayPal':(c.saldoTs?' · aggiornato il '+fDate(new Date(c.saldoTs)):'')), v:(v===undefined?null:v), click:`editSaldoConto('${c.id}')`, nascosto:!!c.nascosto}; }));
+      return {nome:c.nome, uso:[c.uso, c.busta?'si aggiorna con PayPal':(c.saldoTs?'agg. '+fDM(new Date(c.saldoTs)):'')].filter(Boolean).join(' · '), v:(v===undefined?null:v), click:`editSaldoConto('${c.id}')`, nascosto:!!c.nascosto}; }));
   const noti = righe.filter(r=>r.v!==null), ciSonoNascosti = righe.some(r=>r.nascosto);
   const mostra = r => r.v===null ? '<span class="muted">—</span>' : (r.nascosto && !mostraNascosti ? MASCHERA : fmt(r.v));
   el.innerHTML = (ciSonoNascosti ? `<button class="btn sec small" style="width:100%;margin-bottom:6px" onclick="mostraNascosti=!mostraNascosti;render()">${mostraNascosti?'🙈 Nascondi di nuovo':'👁 Mostra i saldi nascosti'}</button>` : '')
@@ -1013,7 +1038,7 @@ function gestisciURL(){
    qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
    ===================================================================== */
 const APP = window.FinanzeAndroid || null;
-const VERSIONE_PAGINA = '21 novembre 2026 (2)';
+const VERSIONE_PAGINA = '21 novembre 2026 (3)';
 var ORA_NOTIFICA = 0;
 let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
 function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
@@ -1036,7 +1061,8 @@ function scaricaCoda(){
 }
 function indietroAndroid(){
   if(document.getElementById('sheetBg').classList.contains('on')){ closeSheet(); return true; }
-  if(vista!=='oggi'){ document.querySelector('#nav button[data-v="oggi"]')?.click(); return true; }
+  if(vista==='diag'){ vai('imp'); return true; }
+  if(vista!=='oggi'){ vai('oggi'); return true; }
   return false;
 }
 // riquadro rosso in Oggi se l'app Android non sta leggendo i pagamenti
@@ -1049,9 +1075,9 @@ function controllaAvvisoLettura(){
   controlloLetturaT = setTimeout(()=>{
     let d = {}; try{ d = JSON.parse(APP.diagnostica()); }catch(e){ return; }
     const ok = d.permesso && d.collegato;
-    box.innerHTML = ok ? '' : `<div class="card" style="border:1px solid var(--bad,#ff6b6b);margin-bottom:12px" onclick="${d.permesso?'controllaLettura()':'esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()'}">
-      <b>⚠️ Spiccioli non sta leggendo i pagamenti</b>
-      <div class="muted" style="margin-top:4px">${d.permesso ? 'Il telefono ha fermato la lettura. Tocca qui: se resta ferma, togli e rimetti "Accesso alle notifiche" per Spiccioli.' : 'L\'accesso alle notifiche è stato tolto: tocca qui per riattivarlo.'} Intanto aggiungi le spese con + Spesa.</div></div>`;
+    box.innerHTML = ok ? '' : `<div class="card" style="border:1px solid var(--bad);margin-bottom:12px" onclick="${d.permesso?'controllaLettura()':'esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()'}">
+      <b>⚠️ NotiPay non sta leggendo i pagamenti</b>
+      <div class="muted" style="margin-top:4px">${d.permesso ? 'Il telefono ha fermato la lettura. Tocca qui: se resta ferma, togli e rimetti "Accesso alle notifiche" per NotiPay.' : 'L\'accesso alle notifiche è stato tolto: tocca qui per riattivarlo.'} Intanto aggiungi le spese con + Spesa.</div></div>`;
   }, 4000);
 }
 // nuova versione dell'app Android pubblicata su GitHub? (controllo una volta al giorno)
@@ -1069,22 +1095,20 @@ async function controllaVersioneApp(){
       localStorage.setItem('versioneApk', JSON.stringify(info));
     }
     const mia = +((/1\.(\d+)/.exec(APP.versione())||[])[1]||0);
-    box.innerHTML = info.ultima > mia ? `<a class="card" style="display:block;text-decoration:none;color:inherit;border:1px solid var(--acc,#3ee6b4);margin-bottom:12px" href="https://github.com/Rich073-debug/App_Finanze/releases/download/apk/Finanze.apk">
+    box.innerHTML = info.ultima > mia ? `<a class="card" style="display:block;text-decoration:none;color:inherit;border:1px solid var(--accent);margin-bottom:12px" href="https://github.com/Rich073-debug/App_Finanze/releases/download/apk/Finanze.apk">
       <b>📲 Nuova versione dell'app (1.${info.ultima})</b><div class="muted" style="margin-top:4px">Tocca per scaricarla, poi aprila per installarla sopra: i dati restano.</div></a>` : '';
   }catch(e){}
 }
 function renderApp(){
   const card = document.getElementById('cardApp'); if(!card) return;
-  const guida = document.getElementById('cardGuida'); if(guida) guida.style.display = APP ? 'none' : '';
+  ['rigaGuida','rigaVersione','diagLink'].forEach(id=>{ const e = document.getElementById(id); if(e) e.style.display = APP ? 'none' : ''; });
+  const da = document.getElementById('diagApp'); if(da) da.style.display = APP ? '' : 'none';
   if(!APP){ card.style.display='none'; return; }
   card.style.display='';
   const ok = APP.permessoNotifiche();
   document.getElementById('appStato').innerHTML = `
-    <div class="row"><div class="grow"><div class="t">Lettura dei pagamenti</div><div class="s">${ok?'Attiva: Wallet, banca, SMS della banca e PayPal vengono registrati da soli':'Non attiva: dai il permesso perché l\'app legga le notifiche dei pagamenti'}</div></div><div class="amt ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div></div>
-    ${ok?'':`<button class="btn" style="width:100%;margin-top:8px" onclick="esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()">Attiva la lettura dei pagamenti</button>`}
-    ${typeof APP.diagnostica==='function' ? `<button class="btn sec" style="width:100%;margin-top:8px" onclick="controllaLettura()">🔍 Controlla la lettura</button>` : ''}
-    <p class="muted" style="font-size:13px">App ${esc(APP.versione())} · pagina del <span id="verPagina"></span>. Gli aggiornamenti arrivano da soli: quando apri l'app dopo un po' carica l'ultima versione, e se c'è una nuova app da installare te lo dice in Oggi.</p>
-    <button class="btn sec" style="width:100%;margin-top:6px" onclick="aggiornaApp()">🔄 Ricarica adesso</button>`;
+    <div class="row ic" onclick="${ok?'controllaLettura()':'esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()'}" style="cursor:pointer"><div class="ico">📲</div><div class="grow"><div class="t">Lettura dei pagamenti</div><div class="s">${ok?'Attiva':'Non attiva · tocca per attivarla'}</div></div><div class="amt ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div></div>
+    <div class="row ic"><div class="ico">ℹ️</div><div class="grow"><div class="t">App ${esc(APP.versione())}</div><div class="s">Pagina del <span id="verPagina"></span> · si aggiorna da sola</div></div><button class="btn small sec" onclick="aggiornaApp()">Ricarica</button></div>`;
   const vp = document.getElementById('verPagina'); if(vp) vp.textContent = VERSIONE_PAGINA;
 }
 const NOMI_FONTI = {wallet:'Google Wallet', banca:'App della banca (Inbank)', paypal:'PayPal', sms:'Messaggi (SMS della banca)'};
@@ -1095,16 +1119,16 @@ function controllaLettura(provaInviata){
   const riga = (ok, titolo, sotto)=>`<div class="row"><div class="grow"><div class="t">${titolo}</div><div class="s">${sotto}</div></div><div class="amt ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div></div>`;
   const provaOk = provaInviata && d.prova >= provaInviata;
   openSheet(`<h3>🔍 Controllo della lettura</h3>
-    ${riga(d.permesso, 'Accesso alle notifiche', d.permesso ? 'Concesso' : 'Non concesso: attivalo per Spiccioli')}
+    ${riga(d.permesso, 'Accesso alle notifiche', d.permesso ? 'Concesso' : 'Non concesso: attivalo per NotiPay')}
     ${riga(d.collegato, 'Servizio di lettura', d.collegato ? 'In ascolto' : (d.permesso ? 'Fermo: riapri l\'app tra qualche secondo; se resta fermo, controlla batteria e avvio automatico' : 'Si avvia quando dai l\'accesso'))}
     ${Object.keys(NOMI_FONTI).map(k=>{ const x = f[k]||{}; const inst = (x.installate||[]).length>0;
       return riga(inst, NOMI_FONTI[k], !inst ? 'App non trovata sul telefono' :
         'Installata · ultima notifica vista: '+quando(x.visto)+(x.presenti?' · ora in barra: '+x.presenti+' ✓':'')); }).join('')}
     ${provaInviata ? riga(provaOk, 'Notifica di prova', provaOk ? 'Ricevuta: la lettura funziona' : 'Non ancora vista: riprova tra qualche secondo') : ''}
-    ${d.notificheConsentite===false ? '<p class="muted">Per la notifica di prova consenti le notifiche di Spiccioli (Impostazioni del telefono → App → Spiccioli → Notifiche).</p>' : ''}
+    ${d.notificheConsentite===false ? '<p class="muted">Per la notifica di prova consenti le notifiche di NotiPay (Impostazioni del telefono → App → NotiPay → Notifiche).</p>' : ''}
     <p class="muted" style="font-size:13px">"Ultima notifica vista" si aggiorna appena una di queste app manda una notifica (un pagamento, un SMS della banca…). Se una notifica è ancora nella barra, la vedi subito come "ora in barra".</p>
     <div class="grid2" style="margin-top:10px"><button class="btn sec" onclick="closeSheet()">Chiudi</button>
-    <button class="btn" onclick="const t=Date.now(); if(!APP.provaLettura()){ toast('Consenti prima le notifiche di Spiccioli'); return; } setTimeout(()=>controllaLettura(t), 1800)">Notifica di prova</button></div>`);
+    <button class="btn" onclick="const t=Date.now(); if(!APP.provaLettura()){ toast('Consenti prima le notifiche di NotiPay'); return; } setTimeout(()=>controllaLettura(t), 1800)">Notifica di prova</button></div>`);
 }
 function chiediPermessoNotifiche(){
   if(!APP || APP.permessoNotifiche()) return;
@@ -1113,7 +1137,7 @@ function chiediPermessoNotifiche(){
   localStorage.setItem('permChiesto', isoDate(today()));
   openSheet(`<h3>📲 Registrazione automatica</h3>
     <p class="muted">Per registrare da sola le spese, l'app deve leggere le notifiche di Google Wallet, della banca, degli SMS della banca e di PayPal. Le altre notifiche vengono ignorate e nessun dato esce dal telefono.</p>
-    <p class="muted">Nella schermata che si apre cerca <b>Spiccioli</b> e attiva l'interruttore.</p>
+    <p class="muted">Nella schermata che si apre cerca <b>NotiPay</b> e attiva l'interruttore.</p>
     <button class="btn" style="width:100%;margin-top:8px" onclick="closeSheet();esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()">Apri le impostazioni</button>
     <button class="btn sec" style="width:100%;margin-top:10px;background:none;color:var(--muted)" onclick="closeSheet()">Più tardi</button>`);
 }
@@ -1122,7 +1146,39 @@ function chiediPermessoNotifiche(){
    INTERFACCIA
    ===================================================================== */
 let vista='oggi', filtroMov='periodo';
-const TITOLI = {oggi:'Oggi', mov:'Movimenti', fisse:'Spese fisse', imp:'Impostazioni'};
+const TITOLI = {oggi:'Oggi', mov:'Movimenti', conti:'Conti', fisse:'Fisse e scadenze', imp:'Impostazioni', diag:'Diagnostica'};
+function infoPeriodo(){
+  const c = calcola();
+  openSheet(`<h3>Periodo</h3>
+    <div class="row"><div class="grow">Ciclo</div><div class="amt">${fDM(c.inizio)} → ${fDM(c.fine)}</div></div>
+    <div class="row"><div class="grow">Stipendio</div><div class="amt">${fmt(c.stip)}</div></div>
+    ${c.entrate?`<div class="row"><div class="grow">Entrate extra</div><div class="amt">+ ${fmt(c.entrate)}</div></div>`:''}
+    <div class="row"><div class="grow">Spese fisse</div><div class="amt">− ${fmt(c.fisse)}</div></div>
+    <div class="row"><div class="grow">Quota scadenze</div><div class="amt">− ${fmt(c.quote)}</div></div>
+    ${c.risparmio?`<div class="row"><div class="grow">Risparmio da spostare</div><div class="amt">− ${fmt(c.risparmio)}</div></div>`:''}
+    <div class="row"><div class="grow"><b>Disponibile</b></div><div class="amt">${fmt(c.disponibile)}</div></div>
+    <p class="muted"><b>Risparmio previsto</b>: quanto ti avanza a fine ciclo se continui a spendere ${fmt(c.mediaGiorno)} al giorno come finora.</p>
+    <p class="muted"><b>Accantonati</b>: soldi già messi da parte per le scadenze. La quota del mese si aggiunge quando carichi lo stipendio successivo.</p>
+    <button class="btn sec" style="width:100%;margin-top:6px" onclick="closeSheet()">Chiudi</button>`);
+}
+function infoConto(){
+  openSheet(`<h3>Conto principale</h3>
+    <p class="muted"><b>Sul conto ora</b> è la somma di tutte le voci: è quanto dovresti vedere nell'app della banca, una volta contabilizzate le spese.</p>
+    <p class="muted"><b>Fisse da addebitare</b>: le prende la banca da sola nei prossimi giorni.</p>
+    <p class="muted"><b>Riserva scadenze</b>: assicurazione, bollo, dentista… restano sul conto finché non paghi.</p>
+    <p class="muted"><b>Budget da spendere</b>: quello che puoi usare fino al prossimo stipendio.</p>
+    <p class="muted"><b>Risparmi sul conto</b>: avanzi dei mesi passati che tieni lì, fuori dal budget.</p>
+    <p class="muted"><b>⚖️ Allinea</b>: scrivi il saldo della banca e l'app sistema la differenza. <b>🧹 Sistema mese</b>: rimette in ordine l'inizio del ciclo partendo dalle cifre della banca.</p>
+    <button class="btn sec" style="width:100%;margin-top:6px" onclick="closeSheet()">Chiudi</button>`);
+}
+function vai(v){
+  vista = v;
+  const tab = v==='diag' ? 'imp' : v;
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on', x.dataset.v===tab));
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on', x.id==='v-'+v));
+  window.scrollTo(0,0); render();
+}
+const fDM = d => String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
   vista=b.dataset.v;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x===b));
@@ -1137,7 +1193,7 @@ const FONTE_ICO = {wallet:'📱', carta:'💳', contanti:'💵', bonifico:'🏦'
 function rigaMov(m){
   const d = new Date(m.ts);
   const tag = m.tipo==='fissa' ? '<span class="tag y">fissa</span>' : m.tipo==='annuale' ? '<span class="tag y">annuale</span>' : m.tipo==='giro' ? '<span class="tag">esclusa</span>' : `<span class="tag">${esc(m.cat)}</span>`;
-  return `<div class="row" onclick="editMov('${m.id}')"><div class="grow"><div class="t">${FONTE_ICO[m.fonte]||''} ${esc(m.desc||(m.fonte==='contanti'?'Contanti':'Spesa'))}</div><div class="s">${tag}${fDateLong(d)} · ${fTime(m.ts)}</div></div><div class="amt">−${fmt(m.importo)}</div></div>`;
+  return `<div class="row ic" onclick="editMov('${m.id}')"><div class="ico">${FONTE_ICO[m.fonte]||'•'}</div><div class="grow"><div class="t">${esc(m.desc||(m.fonte==='contanti'?'Contanti':'Spesa'))}</div><div class="s">${tag}${fDateLong(d)} · ${fTime(m.ts)}</div></div><div class="amt">−${fmt(m.importo)}</div></div>`;
 }
 
 // un bonifico verso un conto di risparmio fatto nel periodo (anche prima di caricare lo stipendio, lo stesso giorno) spunta da solo la voce "Soldi da spostare"
@@ -1157,18 +1213,18 @@ function render(){
   riconciliaSpostati();
   const c = calcola();
   document.getElementById('hTitle').textContent = TITOLI[vista];
-  document.getElementById('hSub').textContent = vista==='oggi' ? fDateLong(c.oggi) : '';
+  document.getElementById('hSub').textContent = vista==='oggi' ? fDateLong(c.oggi)+' · ciclo fino al '+fDM(c.fine) : '';
 
   // ---- OGGI
   const r = document.getElementById('residuoOggi');
   r.textContent = fmt(c.residuoOggi);
   if(APP && typeof APP.impostaResiduo==='function') try{ APP.impostaResiduo(c.residuoOggi); }catch(e){}
-  r.className = 'big ' + (c.residuoOggi < 0 ? 'bad' : c.residuoOggi < c.budgetOggi*0.25 ? 'warn' : 'ok');
-  document.getElementById('budgetOggiTxt').textContent = `Budget di oggi ${fmt(c.budgetOggi)} · speso ${fmt(c.spesoOggi)}`;
+  r.className = 'big ' + (c.residuoOggi < 0 ? 'bad' : c.residuoOggi < c.budgetOggi*0.25 ? 'warn' : 'lime');
+  document.getElementById('budgetOggiTxt').textContent = `Budget oggi ${fmt(c.budgetOggi)} · Speso ${fmt(c.spesoOggi)}`;
   const perc = c.budgetOggi>0 ? Math.min(100, Math.max(0, c.spesoOggi/c.budgetOggi*100)) : 100;
   const bar = document.getElementById('barOggi');
   bar.style.width = perc+'%';
-  bar.style.background = perc>=100 ? 'var(--bad)' : perc>75 ? 'var(--warn)' : 'var(--accent)';
+  bar.style.background = perc>=100 ? 'var(--bad)' : perc>75 ? 'var(--warn)' : 'var(--lime)';
 
   document.getElementById('sDisp').textContent = fmt0(c.disponibile);
   document.getElementById('sSpeso').textContent = fmt0(c.spesoTot);
@@ -1178,52 +1234,46 @@ function render(){
   const risVal = S.annuali.reduce((t,a)=>t+Math.min(a.importo,(a.accantonato||0)),0);
   document.getElementById('sRiserva').style.display = S.annuali.length ? '' : 'none';
   document.getElementById('sRisVal').textContent = fmt(risVal);
-  document.getElementById('sRisTot').textContent = 'su '+fmt(risTot)+' di scadenze';
+  document.getElementById('sRisTot').textContent = 'su '+fmt0(risTot);
   document.getElementById('sRisBar').style.width = (risTot? Math.min(100,risVal/risTot*100):0)+'%';
-  document.getElementById('sRisDett').textContent = '+ '+fmt(c.quote)+' di questo mese: si aggiungono quando carichi il prossimo stipendio'+(Object.keys(S.periodo.quote||{}).length?' (quota scelta da te)':'')+'. Restano sul conto principale finché non paghi · tocca per modificare.';
+  document.getElementById('sRisDett').textContent = '+ '+fmt(c.quote)+' a fine mese'+(Object.keys(S.periodo.quote||{}).length?' (scelta da te)':'')+' · tocca per cambiare';
   const pr = document.getElementById('sProiez');
   pr.textContent = (c.proiezione>=0?'+':'')+fmt0(c.proiezione);
-  pr.className = 'v ' + (c.proiezione>=0?'ok':'bad');
-  document.getElementById('periodoTxt').innerHTML =
-    `Dal ${fDate(c.inizio)} al ${fDate(c.fine)}. Stipendio ${fmt(c.stip)}${c.entrate?` + entrate extra ${fmt(c.entrate)}`:''} − fisse ${fmt(c.fisse)} − accantonamenti ${fmt(c.quote)}${c.risparmio?` − risparmio da spostare ${fmt(c.risparmio)}`:''}.<br>` +
-    `"Risparmio previsto" = quanto ti avanza a fine periodo se continui a spendere ${fmt(c.mediaGiorno)} al giorno come finora (in aggiunta a PAC e obiettivo).`;
+  pr.className = 'v ' + (c.proiezione>=0?'lime':'bad');
 
   // piano conti
   const pc = pianoConti(c);
   document.getElementById('pianoSposta').innerHTML = (pc.sposta.length ? pc.sposta.map(x=>{
     const fatto = S.periodo.spostati?.[x.key];
-    return `<div class="row" onclick="${x.ricarica && !fatto ? `ricaricaBusta(${x.importo})` : `toggleSpostato('${x.key}')`}"><div class="grow"><div class="t" style="${fatto?'opacity:.5;text-decoration:line-through':''}">${fatto?'✅':'⬜'} ${esc(nomeConto(x.conto))}</div><div class="s">${esc(x.motivo)}${fatto?' · fatto':(x.entro?' · entro il '+fDate(x.entro):'')+(x.ricarica?' · tocca per registrarla':' · tocca quando l\'hai spostato')}</div></div><div class="amt">${fmt(x.importo)}</div></div>`;}).join('') : '<div class="empty">Niente da spostare. Imposta l\'obiettivo di risparmio in Impostazioni.</div>')
-    + (pc.daSpostare>0 ? `<div class="row"><div class="grow"><b>Ancora da spostare</b></div><div class="amt warn">${fmt(pc.daSpostare)}</div></div>` : '');
+    return `<div class="row ic" onclick="${x.ricarica && !fatto ? `ricaricaBusta(${x.importo})` : `toggleSpostato('${x.key}')`}" style="cursor:pointer"><div class="ico">${fatto?'✅':'⬜'}</div><div class="grow"><div class="t" style="${fatto?'opacity:.55;text-decoration:line-through':''}">${esc(nomeConto(x.conto))}</div><div class="s">${esc(x.motivo)}${fatto?' · fatto':(x.entro?' · entro il '+fDM(x.entro):'')}</div></div><div class="amt">${fmt(x.importo)}</div></div>`;}).join('') + `<p class="muted" style="margin:8px 0 0">Tocca una voce quando hai fatto il bonifico.</p>` : '<div class="empty">Niente da spostare questo mese</div>');
+  const nasc = S.impostazioni.nascondiPrincipale && !mostraNascosti;
   document.getElementById('pianoResta').innerHTML =
-    `<div class="row"><div class="grow"><div class="t">Spese fisse ancora da addebitare</div><div class="s">${pc.fisseDaPagare.map(f=>esc(f.nome)+' il '+fDate(dataFissa(f))).join(', ')||'Tutte già addebitate'}</div></div><div class="amt">${fmt(pc.fissePrincipale)}</div></div>
-     <div class="row"><div class="grow"><div class="t">Riserva scadenze</div><div class="s">Già messi da parte ${fmt(pc.accantonati - c.quote)} + quota di questo mese ${fmt(c.quote)}</div></div><div class="amt">${fmt(pc.accantonati)}</div></div>
-     <div class="row"><div class="grow"><div class="t">Budget spese rimasto</div><div class="s">Fino al ${fDate(c.fine)}</div></div><div class="amt">${fmt(pc.budgetResiduo)}</div></div>
-     <div class="row"><div class="grow"><b>Totale minimo sul conto</b><div class="s">Se sul conto hai di più, la differenza è margine extra</div></div><div class="amt ok">${fmt(pc.fissePrincipale+pc.accantonati+pc.budgetResiduo)}</div></div>
-     ${daSpostareOra()>0 ? `<div class="row"><div class="grow"><div class="t">Ancora da spostare</div><div class="s">Sono ancora sul conto finché non fai i bonifici</div></div><div class="amt">${fmt(daSpostareOra())}</div></div>` : ''}
-     <div class="row" onclick="editRiservaConto()" style="cursor:pointer"><div class="grow"><div class="t">Risparmi lasciati sul conto</div><div class="s">Avanzi dei mesi passati, fuori dal budget · tocca per modificare</div></div><div class="amt">${fmt(riservaConto())}</div></div>
-     <div class="row" onclick="allineaSaldo()" style="cursor:pointer"><div class="grow"><b>Sul conto dovresti avere adesso</b><div class="s">Somma delle voci qui sopra: confrontala con l'app della banca${S.periodo.saldo?'':' · tocca per allineare'}</div></div><div class="amt ok">${S.impostazioni.nascondiPrincipale && !mostraNascosti ? MASCHERA : fmt(saldoPrevisto())}</div></div>
-     ${S.periodo.saldo ? `<div class="row"><div class="grow"><div class="t">Ultimo controllo del saldo</div><div class="s">${fmt(S.periodo.saldo.valore)} il ${fDate(new Date(S.periodo.saldo.ts))} · ${esc(S.periodo.saldo.esito||'')}</div></div></div>` : ''}
-     <button class="btn sec" style="width:100%;margin-top:10px" onclick="allineaSaldo()">⚖️ Allinea con il saldo reale</button>
-     <button class="btn sec" style="width:100%;margin-top:8px" onclick="sistemaInizio()">🧹 Sistema i conti di inizio mese</button>`;
+    `<div class="row"><div class="grow"><div class="t">Fisse da addebitare</div><div class="s">${pc.fisseDaPagare.map(f=>esc(f.nome)+' '+fDM(dataFissa(f))).join(' · ')||'Tutte addebitate'}</div></div><div class="amt">${fmt(pc.fissePrincipale)}</div></div>
+     <div class="row"><div class="grow"><div class="t">Riserva scadenze</div><div class="s">${fmt(pc.accantonati - c.quote)} + ${fmt(c.quote)} di questo mese</div></div><div class="amt">${fmt(pc.accantonati)}</div></div>
+     <div class="row"><div class="grow"><div class="t">Budget da spendere</div><div class="s">Fino al ${fDM(c.fine)}</div></div><div class="amt lime">${fmt(pc.budgetResiduo)}</div></div>
+     ${daSpostareOra()>0 ? `<div class="row"><div class="grow"><div class="t">Da spostare</div><div class="s">Bonifici non ancora fatti</div></div><div class="amt warn">${fmt(daSpostareOra())}</div></div>` : ''}
+     <div class="row" onclick="editRiservaConto()" style="cursor:pointer"><div class="grow"><div class="t">Risparmi sul conto</div><div class="s">Avanzi dei mesi passati · tocca per cambiare</div></div><div class="amt">${fmt(riservaConto())}</div></div>
+     <div class="totale" onclick="allineaSaldo()" style="cursor:pointer"><div><b>Sul conto ora</b><div class="s muted" style="font-size:12.5px">${S.periodo.saldo ? 'Controllato il '+fDM(new Date(S.periodo.saldo.ts)) : 'Confrontalo con la banca'}</div></div><div class="v ok">${nasc ? MASCHERA : fmt(saldoPrevisto())}</div></div>
+     <div class="grid2" style="margin-top:10px"><button class="btn sec" onclick="allineaSaldo()">⚖️ Allinea</button><button class="btn sec" onclick="sistemaInizio()">🧹 Sistema mese</button></div>`;
 
-  // previsioni
+  // prossime scadenze (le 3 più vicine) e carburante
   let prev = '';
   const carb = previsioneCarburante();
   if(carb.n>=2){
     const gg = daysBetween(c.oggi, carb.prossimo);
-    prev += `<div class="row"><div class="grow"><div class="t">⛽ Prossimo rifornimento</div><div class="s">${gg<=0?'Probabilmente a breve':'Tra circa '+gg+' giorni ('+fDate(carb.prossimo)+')'} · ogni ~${Math.round(carb.media)} gg · ~${fmt0(carb.mensile)}/mese</div></div><div class="amt">~${fmt0(carb.mediaImp)}</div></div>`;
-  } else {
-    prev += `<div class="row"><div class="grow"><div class="t">⛽ Carburante</div><div class="s">La stima parte dopo 2 rifornimenti registrati (${carb.n||0}/2)</div></div></div>`;
+    prev += `<div class="row ic"><div class="ico">⛽</div><div class="grow"><div class="t">Rifornimento</div><div class="s">${gg<=0?'A breve':fDM(carb.prossimo)+' · tra '+gg+' gg'}</div></div><div class="amt">~${fmt0(carb.mediaImp)}</div></div>`;
   }
-  [...S.annuali].sort((a,b)=>(a.scadenza||'9999').localeCompare(b.scadenza||'9999')).forEach(a=>{
-    const q = quotaAnnuale(a);
+  const scad = [...S.annuali].sort((a,b)=>(a.scadenza||'9999').localeCompare(b.scadenza||'9999'));
+  scad.slice(0,3).forEach(a=>{
     const gg = a.scadenza ? daysBetween(c.oggi, parseDate(a.scadenza)) : null;
-    prev += `<div class="row"><div class="grow"><div class="t">📅 ${esc(a.nome)}${a.nota?` <span class="tag">${esc(a.nota)}</span>`:''}</div><div class="s">${a.scadenza? (gg<0?'Scaduta il ':'Scade il ')+parseDate(a.scadenza).toLocaleDateString('it-IT')+(gg>=0?` (tra ${gg} gg)`:'') : '<span class="warn">Inserisci la data di scadenza</span>'} · accantonati ${fmt(a.accantonato||0)} · quota ${fmt(q)}/mese</div></div><div class="amt">${fmt(a.importo)}</div></div>`;
+    const quando = !a.scadenza ? '<span class="warn">Manca la data</span>' : gg<0 ? '<span class="bad">Scaduta il '+fDM(parseDate(a.scadenza))+'</span>' : `<span class="${gg<=30?'bad':''}">${fDM(parseDate(a.scadenza))} · tra ${gg} gg</span>`;
+    prev += `<div class="row ic" onclick="vai('fisse')" style="cursor:pointer"><div class="ico">📅</div><div class="grow"><div class="t">${esc(a.nome)}</div><div class="s">${quando} · pronti ${fmt0(Math.min(a.importo,a.accantonato||0))}</div></div><div class="amt">${fmt(a.importo)}</div></div>`;
   });
+  document.getElementById('cardPrev').style.display = prev ? '' : 'none';
   document.getElementById('prevList').innerHTML = prev;
 
-  const ult = [...S.movimenti].sort((a,b)=>b.ts-a.ts).slice(0,6);
-  document.getElementById('ultimi').innerHTML = ult.length ? ult.map(rigaMov).join('') : '<div class="empty">Nessuna spesa registrata. Tocca "＋ Spesa" per iniziare.</div>';
+  const ult = [...S.movimenti].sort((a,b)=>b.ts-a.ts).slice(0,4);
+  document.getElementById('ultimi').innerHTML = ult.length ? ult.map(rigaMov).join('') : '<div class="empty">Nessuna spesa. Tocca "＋ Spesa" per iniziare.</div>';
 
   renderBusta();
   renderSaldi();
@@ -1264,7 +1314,7 @@ function render(){
   renderSicurezza();
   document.getElementById('catList').innerHTML = categorie().map(k=>{ const n = S.movimenti.filter(m=>m.cat===k).length, par = (S.catParole||{})[k];
     return `<div class="row" onclick="editCategoria(this.dataset.n)" data-n="${esc(k)}"><div class="grow"><div class="t">${esc(k)}${CAT_PROTETTE.includes(k)?' <span class="tag">fissa</span>':''}</div><div class="s">${n} moviment${n===1?'o':'i'}${par?' · parole: '+esc(par):''}</div></div><div class="amt">›</div></div>`; }).join('');
-  document.getElementById('ultimoBk').textContent = S.ultimoBackup ? 'Ultimo backup: '+new Date(S.ultimoBackup).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : 'Nessun backup ancora fatto';
+  document.getElementById('ultimoBk').textContent = (S.ultimoBackup ? 'Ultimo: '+new Date(S.ultimoBackup).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) : 'Nessun backup ancora') + ' · i dati stanno solo su questo telefono';
   if(vista==='imp' && document.activeElement?.tagName!=='INPUT'){
     document.getElementById('iStip').value = S.impostazioni.stipendio;
     document.getElementById('iRispConti').innerHTML = S.conti.filter(k=>!k.busta).map(k=>
@@ -1551,7 +1601,7 @@ function chiediBonifico(importo, desc){
 let rec = null;
 function openVoce(){
   openSheet(`<h3>Detta la spesa</h3><p class="muted">Tocca il microfono e di' l'importo, per esempio "3 euro e 50". Viene registrata come contanti.</p>
-    <button class="mic" id="micBtn" onclick="startVoce()"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#06261c" stroke-width="2.2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button class="mic" id="micBtn" onclick="startVoce()"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#0B1220" stroke-width="2.2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
     <p id="voceOut" style="text-align:center;font-size:20px;min-height:28px"></p>`);
   startVoce();
 }
@@ -1662,7 +1712,7 @@ function salvaImpostazioni(){
 }
 function fileBackup(){
   S.ultimoBackup = Date.now(); save();
-  return new File([JSON.stringify(S,null,1)], 'spiccioli-backup-'+isoDate(today())+'.json', {type:'application/json'});
+  return new File([JSON.stringify(S,null,1)], 'notipay-backup-'+isoDate(today())+'.json', {type:'application/json'});
 }
 function esporta(){
   if(APP){ const f = fileBackup(); const ok = APP.salvaFile(f.name, JSON.stringify(S,null,1)); closeSheet(); render(); toast(ok?'⬇️ Backup salvato nella cartella Download':'⚠️ Non sono riuscito a salvare il backup'); return; }
@@ -1674,7 +1724,7 @@ function esporta(){
 async function condividiBackup(){
   if(APP){ const f = fileBackup(); esternoFino = Date.now()+300000; APP.condividiFile(f.name, JSON.stringify(S,null,1)); closeSheet(); render(); return; }
   const f = fileBackup();
-  try{ await navigator.share({files:[f], title:'Backup Spiccioli'}); closeSheet(); render(); toast('📤 Backup inviato'); }
+  try{ await navigator.share({files:[f], title:'Backup NotiPay'}); closeSheet(); render(); toast('📤 Backup inviato'); }
   catch(e){ if(e.name!=='AbortError'){ esporta(); } }
 }
 function puoCondividere(){ if(APP) return true; try{ return !!(navigator.canShare && navigator.canShare({files:[new File(['x'],'x.json',{type:'application/json'})]})); }catch(e){ return false; } }
@@ -1824,7 +1874,7 @@ async function sbloccaBio(){
 function pinDimenticato(){
   document.getElementById('lockMsg').innerHTML = SEC.credId
     ? 'Usa l\'impronta o il volto per entrare, poi reimposta il PIN in Impostazioni → Sicurezza.'
-    : 'Senza PIN non è possibile entrare. Puoi solo cancellare i dati dell\'app e ricominciare (poi ricarica il tuo backup).<br><button class="btn danger small" style="margin-top:10px" onclick="if(confirm(\'Cancellare tutti i dati di Spiccioli da questo telefono?\')){localStorage.clear();location.reload();}">Cancella dati e ricomincia</button>';
+    : 'Senza PIN non è possibile entrare. Puoi solo cancellare i dati dell\'app e ricominciare (poi ricarica il tuo backup).<br><button class="btn danger small" style="margin-top:10px" onclick="if(confirm(\'Cancellare tutti i dati di NotiPay da questo telefono?\')){localStorage.clear();location.reload();}">Cancella dati e ricomincia</button>';
 }
 
 /* --- impostazioni sicurezza --- */
@@ -1832,7 +1882,7 @@ function renderSicurezza(){
   const el = document.getElementById('secStato'); if(!el) return;
   const rit = SEC.ritardo ?? 60000;
   el.innerHTML = !attivo()
-    ? `<p class="muted" style="margin-top:0">Blocco disattivato: chiunque prenda il telefono sbloccato può aprire l'app.</p>
+    ? `<p class="muted" style="margin-top:0">Blocco non attivo.</p>
        <button class="btn" style="width:100%" onclick="impostaPin()">🔒 Attiva blocco con PIN</button>`
     : `<div class="row"><div class="grow"><div class="t">PIN</div><div class="s">Attivo · ${SEC.pinLen} cifre</div></div><button class="btn small sec" onclick="impostaPin()">Cambia</button></div>
        <div class="row"><div class="grow"><div class="t">Impronta / volto</div><div class="s">${SEC.credId?'Attiva':'Non attiva'}</div></div>${SEC.credId?`<button class="btn small sec" onclick="SEC.credId=null;salvaSec();renderSicurezza()">Disattiva</button>`:`<button class="btn small" onclick="attivaBio()">Attiva</button>`}</div>

@@ -131,7 +131,7 @@ public class Ponte {
                     .setType("application/json")
                     .putExtra(Intent.EXTRA_STREAM, u)
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            a.runOnUiThread(() -> a.startActivity(Intent.createChooser(s, "Backup Spiccioli")));
+            a.runOnUiThread(() -> a.startActivity(Intent.createChooser(s, "Backup NotiPay")));
         } catch (Exception ignored) {
         }
     }

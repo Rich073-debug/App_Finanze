@@ -1,13 +1,13 @@
 {
-  "name": "Spiccioli",
-  "short_name": "Spiccioli",
+  "name": "NotiPay",
+  "short_name": "NotiPay",
   "description": "Budget giornaliero, spese fisse e previsioni",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f1714",
-  "theme_color": "#0f1714",
+  "background_color": "#111827",
+  "theme_color": "#111827",
   "lang": "it",
   "icons": [
     {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},

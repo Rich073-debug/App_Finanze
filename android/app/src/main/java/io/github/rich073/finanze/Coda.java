@@ -137,7 +137,7 @@ final class Coda {
         return NotificationManagerCompat.getEnabledListenerPackages(c).contains(c.getPackageName());
     }
 
-    /** Piccolo avviso silenzioso: "2 pagamenti salvati, apri Spiccioli per vederli nel budget". */
+    /** Piccolo avviso silenzioso: "2 pagamenti salvati, apri NotiPay per vederli nel budget". */
     static void avviso(Context c) {
         try {
             int n = quante(c);
@@ -156,11 +156,11 @@ final class Coda {
             }
             Intent apri = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             PendingIntent pi = PendingIntent.getActivity(c, 0, apri, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            String testo = n == 1 ? "1 pagamento salvato: apri Spiccioli per vederlo nel budget"
-                    : n + " pagamenti salvati: apri Spiccioli per vederli nel budget";
+            String testo = n == 1 ? "1 pagamento salvato: apri NotiPay per vederlo nel budget"
+                    : n + " pagamenti salvati: apri NotiPay per vederli nel budget";
             NotificationCompat.Builder b = new NotificationCompat.Builder(c, CANALE)
                     .setSmallIcon(R.drawable.ic_notifica)
-                    .setContentTitle("Spiccioli")
+                    .setContentTitle("NotiPay")
                     .setContentText(testo)
                     .setContentIntent(pi)
                     .setAutoCancel(true)
