@@ -187,20 +187,20 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <button class="btn sec small" style="margin-top:10px" onclick="editFissa()">＋ Aggiungi spesa fissa</button>
   </div>
   <div class="card">
-    <h2>Scadenze annuali (accantonamento)</h2>
-    <p class="muted" style="margin-top:0">Ogni mese l'app mette da parte una quota, così alla scadenza i soldi ci sono già.</p>
+    <h2>Scadenze annuali</h2>
+    <p class="muted" style="margin-top:0">Una quota al mese, così alla scadenza i soldi ci sono.</p>
     <div id="annualiList"></div>
     <button class="btn sec small" style="margin-top:10px" onclick="editAnnuale()">＋ Aggiungi scadenza</button>
   </div>
   <div class="card">
-    <h2>Abbonamenti (Prepagata / PayPal)</h2>
-    <p class="muted" style="margin-top:0">Pagati dalla prepagata tramite PayPal: non toccano il budget giornaliero, ma l'app ti avvisa se sulla prepagata non bastano i soldi.</p>
+    <h2>Abbonamenti</h2>
+    <p class="muted" style="margin-top:0">Pagati da Prepagata / PayPal, fuori dal budget.</p>
     <div id="abbList"></div>
     <button class="btn sec small" style="margin-top:10px" onclick="editAbbonamento()">＋ Aggiungi abbonamento</button>
   </div>
   <div class="card">
     <h2>Entrate extra</h2>
-    <p class="muted" style="margin-top:0">Trasferte, lavori extra, rimborsi: aumentano il budget del periodo in cui le aggiungi.</p>
+    <p class="muted" style="margin-top:0">Aumentano il budget del periodo.</p>
     <div id="entrateList"></div>
     <button class="btn sec small" style="margin-top:10px" onclick="editEntrata()">＋ Aggiungi entrata</button>
   </div>
@@ -1038,7 +1038,7 @@ function gestisciURL(){
    qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
    ===================================================================== */
 const APP = window.FinanzeAndroid || null;
-const VERSIONE_PAGINA = '21 novembre 2026 (3)';
+const VERSIONE_PAGINA = '21 novembre 2026 (4)';
 var ORA_NOTIFICA = 0;
 let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
 function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
@@ -1072,26 +1072,29 @@ function controllaAvvisoLettura(){
   if(!APP || typeof APP.diagnostica!=='function'){ box.innerHTML=''; return; }
   clearTimeout(controlloLetturaT);
   // il servizio può metterci qualche secondo a ricollegarsi dopo l'apertura
+  const stato = ()=>{ try{ const d = JSON.parse(APP.diagnostica()); return {d, ok: d.permesso && d.collegato}; }catch(e){ return null; } };
   controlloLetturaT = setTimeout(()=>{
-    let d = {}; try{ d = JSON.parse(APP.diagnostica()); }catch(e){ return; }
-    const ok = d.permesso && d.collegato;
+    const p1 = stato(); if(!p1) return;
+    if(p1.ok){ box.innerHTML=''; return; }
+    controlloLetturaT = setTimeout(()=>{ const p2 = stato(); if(p2) mostraAvvisoLettura(box, p2.d, p2.ok); }, 8000);
+  }, 4000);
+}
+function mostraAvvisoLettura(box, d, ok){
     box.innerHTML = ok ? '' : `<div class="card" style="border:1px solid var(--bad);margin-bottom:12px" onclick="${d.permesso?'controllaLettura()':'esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()'}">
       <b>⚠️ NotiPay non sta leggendo i pagamenti</b>
       <div class="muted" style="margin-top:4px">${d.permesso ? 'Il telefono ha fermato la lettura. Tocca qui: se resta ferma, togli e rimetti "Accesso alle notifiche" per NotiPay.' : 'L\'accesso alle notifiche è stato tolto: tocca qui per riattivarlo.'} Intanto aggiungi le spese con + Spesa.</div></div>`;
-  }, 4000);
 }
 // nuova versione dell'app Android pubblicata su GitHub? (controllo una volta al giorno)
 async function controllaVersioneApp(){
   if(!APP) return;
   const box = document.getElementById('avvisoVersione'); if(!box) return;
   try{
-    const oggi = isoDate(today());
     let info = JSON.parse(localStorage.getItem('versioneApk')||'{}');
-    if(info.giorno!==oggi){
+    if(!info.ts || Date.now()-info.ts > 3600000){
       const r = await fetch('https://api.github.com/repos/Rich073-debug/App_Finanze/releases/tags/apk', {cache:'no-store'});
       const j = await r.json();
       const m = /Versione\s+1\.(\d+)/.exec(j.body||'');
-      info = {giorno:oggi, ultima: m ? +m[1] : 0};
+      info = {ts:Date.now(), ultima: m ? +m[1] : 0};
       localStorage.setItem('versioneApk', JSON.stringify(info));
     }
     const mia = +((/1\.(\d+)/.exec(APP.versione())||[])[1]||0);
