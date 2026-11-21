@@ -1,6 +1,6 @@
 {
-  "name": "Finanze",
-  "short_name": "Finanze",
+  "name": "Spiccioli",
+  "short_name": "Spiccioli",
   "description": "Budget giornaliero, spese fisse e previsioni",
   "start_url": "./",
   "scope": "./",

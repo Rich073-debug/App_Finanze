@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f1714">
-<title>Finanze</title>
+<title>Spiccioli</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -277,7 +277,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="lock" id="lock">
   <div style="font-size:44px">🔒</div>
-  <h2 style="margin:10px 0 0;font-size:22px">Finanze</h2>
+  <h2 style="margin:10px 0 0;font-size:22px">Spiccioli</h2>
   <p class="muted" id="lockMsg" style="margin:6px 0 0;text-align:center">Inserisci il PIN</p>
   <div class="dots" id="lockDots"></div>
   <div class="keypad" id="keypad"></div>
@@ -1013,7 +1013,7 @@ function gestisciURL(){
    qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
    ===================================================================== */
 const APP = window.FinanzeAndroid || null;
-const VERSIONE_PAGINA = '21 novembre 2026';
+const VERSIONE_PAGINA = '21 novembre 2026 (2)';
 var ORA_NOTIFICA = 0;
 let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
 function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
@@ -1050,8 +1050,8 @@ function controllaAvvisoLettura(){
     let d = {}; try{ d = JSON.parse(APP.diagnostica()); }catch(e){ return; }
     const ok = d.permesso && d.collegato;
     box.innerHTML = ok ? '' : `<div class="card" style="border:1px solid var(--bad,#ff6b6b);margin-bottom:12px" onclick="${d.permesso?'controllaLettura()':'esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()'}">
-      <b>⚠️ Finanze non sta leggendo i pagamenti</b>
-      <div class="muted" style="margin-top:4px">${d.permesso ? 'Il telefono ha fermato la lettura. Tocca qui: se resta ferma, togli e rimetti "Accesso alle notifiche" per Finanze.' : 'L\'accesso alle notifiche è stato tolto: tocca qui per riattivarlo.'} Intanto aggiungi le spese con + Spesa.</div></div>`;
+      <b>⚠️ Spiccioli non sta leggendo i pagamenti</b>
+      <div class="muted" style="margin-top:4px">${d.permesso ? 'Il telefono ha fermato la lettura. Tocca qui: se resta ferma, togli e rimetti "Accesso alle notifiche" per Spiccioli.' : 'L\'accesso alle notifiche è stato tolto: tocca qui per riattivarlo.'} Intanto aggiungi le spese con + Spesa.</div></div>`;
   }, 4000);
 }
 // nuova versione dell'app Android pubblicata su GitHub? (controllo una volta al giorno)
@@ -1095,16 +1095,16 @@ function controllaLettura(provaInviata){
   const riga = (ok, titolo, sotto)=>`<div class="row"><div class="grow"><div class="t">${titolo}</div><div class="s">${sotto}</div></div><div class="amt ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div></div>`;
   const provaOk = provaInviata && d.prova >= provaInviata;
   openSheet(`<h3>🔍 Controllo della lettura</h3>
-    ${riga(d.permesso, 'Accesso alle notifiche', d.permesso ? 'Concesso' : 'Non concesso: attivalo per Finanze')}
+    ${riga(d.permesso, 'Accesso alle notifiche', d.permesso ? 'Concesso' : 'Non concesso: attivalo per Spiccioli')}
     ${riga(d.collegato, 'Servizio di lettura', d.collegato ? 'In ascolto' : (d.permesso ? 'Fermo: riapri l\'app tra qualche secondo; se resta fermo, controlla batteria e avvio automatico' : 'Si avvia quando dai l\'accesso'))}
     ${Object.keys(NOMI_FONTI).map(k=>{ const x = f[k]||{}; const inst = (x.installate||[]).length>0;
       return riga(inst, NOMI_FONTI[k], !inst ? 'App non trovata sul telefono' :
         'Installata · ultima notifica vista: '+quando(x.visto)+(x.presenti?' · ora in barra: '+x.presenti+' ✓':'')); }).join('')}
     ${provaInviata ? riga(provaOk, 'Notifica di prova', provaOk ? 'Ricevuta: la lettura funziona' : 'Non ancora vista: riprova tra qualche secondo') : ''}
-    ${d.notificheConsentite===false ? '<p class="muted">Per la notifica di prova consenti le notifiche di Finanze (Impostazioni del telefono → App → Finanze → Notifiche).</p>' : ''}
+    ${d.notificheConsentite===false ? '<p class="muted">Per la notifica di prova consenti le notifiche di Spiccioli (Impostazioni del telefono → App → Spiccioli → Notifiche).</p>' : ''}
     <p class="muted" style="font-size:13px">"Ultima notifica vista" si aggiorna appena una di queste app manda una notifica (un pagamento, un SMS della banca…). Se una notifica è ancora nella barra, la vedi subito come "ora in barra".</p>
     <div class="grid2" style="margin-top:10px"><button class="btn sec" onclick="closeSheet()">Chiudi</button>
-    <button class="btn" onclick="const t=Date.now(); if(!APP.provaLettura()){ toast('Consenti prima le notifiche di Finanze'); return; } setTimeout(()=>controllaLettura(t), 1800)">Notifica di prova</button></div>`);
+    <button class="btn" onclick="const t=Date.now(); if(!APP.provaLettura()){ toast('Consenti prima le notifiche di Spiccioli'); return; } setTimeout(()=>controllaLettura(t), 1800)">Notifica di prova</button></div>`);
 }
 function chiediPermessoNotifiche(){
   if(!APP || APP.permessoNotifiche()) return;
@@ -1113,7 +1113,7 @@ function chiediPermessoNotifiche(){
   localStorage.setItem('permChiesto', isoDate(today()));
   openSheet(`<h3>📲 Registrazione automatica</h3>
     <p class="muted">Per registrare da sola le spese, l'app deve leggere le notifiche di Google Wallet, della banca, degli SMS della banca e di PayPal. Le altre notifiche vengono ignorate e nessun dato esce dal telefono.</p>
-    <p class="muted">Nella schermata che si apre cerca <b>Finanze</b> e attiva l'interruttore.</p>
+    <p class="muted">Nella schermata che si apre cerca <b>Spiccioli</b> e attiva l'interruttore.</p>
     <button class="btn" style="width:100%;margin-top:8px" onclick="closeSheet();esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()">Apri le impostazioni</button>
     <button class="btn sec" style="width:100%;margin-top:10px;background:none;color:var(--muted)" onclick="closeSheet()">Più tardi</button>`);
 }
@@ -1662,7 +1662,7 @@ function salvaImpostazioni(){
 }
 function fileBackup(){
   S.ultimoBackup = Date.now(); save();
-  return new File([JSON.stringify(S,null,1)], 'finanze-backup-'+isoDate(today())+'.json', {type:'application/json'});
+  return new File([JSON.stringify(S,null,1)], 'spiccioli-backup-'+isoDate(today())+'.json', {type:'application/json'});
 }
 function esporta(){
   if(APP){ const f = fileBackup(); const ok = APP.salvaFile(f.name, JSON.stringify(S,null,1)); closeSheet(); render(); toast(ok?'⬇️ Backup salvato nella cartella Download':'⚠️ Non sono riuscito a salvare il backup'); return; }
@@ -1674,7 +1674,7 @@ function esporta(){
 async function condividiBackup(){
   if(APP){ const f = fileBackup(); esternoFino = Date.now()+300000; APP.condividiFile(f.name, JSON.stringify(S,null,1)); closeSheet(); render(); return; }
   const f = fileBackup();
-  try{ await navigator.share({files:[f], title:'Backup Finanze'}); closeSheet(); render(); toast('📤 Backup inviato'); }
+  try{ await navigator.share({files:[f], title:'Backup Spiccioli'}); closeSheet(); render(); toast('📤 Backup inviato'); }
   catch(e){ if(e.name!=='AbortError'){ esporta(); } }
 }
 function puoCondividere(){ if(APP) return true; try{ return !!(navigator.canShare && navigator.canShare({files:[new File(['x'],'x.json',{type:'application/json'})]})); }catch(e){ return false; } }
@@ -1824,7 +1824,7 @@ async function sbloccaBio(){
 function pinDimenticato(){
   document.getElementById('lockMsg').innerHTML = SEC.credId
     ? 'Usa l\'impronta o il volto per entrare, poi reimposta il PIN in Impostazioni → Sicurezza.'
-    : 'Senza PIN non è possibile entrare. Puoi solo cancellare i dati dell\'app e ricominciare (poi ricarica il tuo backup).<br><button class="btn danger small" style="margin-top:10px" onclick="if(confirm(\'Cancellare tutti i dati di Finanze da questo telefono?\')){localStorage.clear();location.reload();}">Cancella dati e ricomincia</button>';
+    : 'Senza PIN non è possibile entrare. Puoi solo cancellare i dati dell\'app e ricominciare (poi ricarica il tuo backup).<br><button class="btn danger small" style="margin-top:10px" onclick="if(confirm(\'Cancellare tutti i dati di Spiccioli da questo telefono?\')){localStorage.clear();location.reload();}">Cancella dati e ricomincia</button>';
 }
 
 /* --- impostazioni sicurezza --- */

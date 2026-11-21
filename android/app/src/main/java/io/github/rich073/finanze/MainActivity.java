@@ -182,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Finanze")
+                .setTitle("Spiccioli")
                 .setSubtitle("Sblocca con impronta o volto")
                 .setNegativeButtonText("Usa il PIN")
                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)

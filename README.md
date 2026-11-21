@@ -1,4 +1,4 @@
-# App Finanze
+# Spiccioli (App Finanze)
 
 **📲 Scarica l'app Android (APK):** https://github.com/Rich073-debug/App_Finanze/releases/download/apk/Finanze.apk
 Legge da sola le notifiche dei pagamenti (Google Wallet, banca, SMS della banca, PayPal): non servono app esterne.
