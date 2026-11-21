@@ -7,4 +7,13 @@
         <item name="colorPrimary">#3EE6B4</item>
         <item name="colorAccent">#3EE6B4</item>
     </style>
+    <style name="Finestrella" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="colorAccent">#3EE6B4</item>
+        <item name="colorPrimary">#3EE6B4</item>
+    </style>
 </resources>

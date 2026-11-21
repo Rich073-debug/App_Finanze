@@ -121,9 +121,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private long inPausaDa = 0;
+
     @Override
     protected void onResume() {
         super.onResume();
+        // dopo mezz'ora in background ricarica la pagina: così prende sempre l'ultima versione
+        if (inPausaDa > 0 && System.currentTimeMillis() - inPausaDa > 30 * 60 * 1000L) web.reload();
+        inPausaDa = 0;
         inPrimoPiano = this;
         web.onResume();
         Diagnosi.ricollega(this);
@@ -134,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         inPrimoPiano = null;
+        inPausaDa = System.currentTimeMillis();
         web.onPause();
         super.onPause();
     }

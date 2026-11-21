@@ -96,6 +96,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 <!-- ============ OGGI ============ -->
 <section class="view on" id="v-oggi">
   <div id="avvisoLettura"></div>
+  <div id="avvisoVersione"></div>
   <div class="card hero">
     <div class="label">Puoi ancora spendere oggi</div>
     <div class="big" id="residuoOggi">—</div>
@@ -192,11 +193,11 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 
 <!-- ============ IMPOSTAZIONI ============ -->
 <section class="view" id="v-imp">
-  <div class="card">
+  <div class="card" id="cardGuida">
     <h2>Guida</h2>
     <p class="muted" style="margin-top:0">Come installare l'app, collegarla alle notifiche con Automate e usarla al meglio.</p>
     <a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="guida.html">📖 Apri la guida</a>
-    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b>19 novembre 2026 (2)</b></p>
+    <p class="muted" style="margin:14px 0 6px">Versione dell'app: <b id="verWeb"></b></p>
     <button class="btn sec" style="width:100%" onclick="aggiornaApp()">🔄 Cerca aggiornamenti</button>
   </div>
   <div class="card">
@@ -1012,6 +1013,7 @@ function gestisciURL(){
    qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
    ===================================================================== */
 const APP = window.FinanzeAndroid || null;
+const VERSIONE_PAGINA = '21 novembre 2026';
 var ORA_NOTIFICA = 0;
 let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
 function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
@@ -1024,7 +1026,9 @@ function scaricaCoda(){
   S = load();
   for(const e of ev){
     if(document.getElementById('sheetBg').classList.contains('on')) break; // c'è una domanda aperta: il resto dopo
-    try{ ORA_NOTIFICA = e.ts||Date.now(); eseguiNotifica(e.titolo||'', e.testo||'', e.fonte||undefined); }
+    try{ ORA_NOTIFICA = e.ts||Date.now();
+      if(e.tipo==='spesa') aggiungiMovimento({importo:+e.importo, fonte:'contanti', desc:e.desc||'', ts:e.ts||Date.now(), forza:true}); // dalla finestrella "Aggiungi spesa"
+      else eseguiNotifica(e.titolo||'', e.testo||'', e.fonte||undefined); }
     catch(err){} finally { ORA_NOTIFICA = 0; }
     APP.confermaCoda(e.id);
   }
@@ -1050,8 +1054,28 @@ function controllaAvvisoLettura(){
       <div class="muted" style="margin-top:4px">${d.permesso ? 'Il telefono ha fermato la lettura. Tocca qui: se resta ferma, togli e rimetti "Accesso alle notifiche" per Finanze.' : 'L\'accesso alle notifiche è stato tolto: tocca qui per riattivarlo.'} Intanto aggiungi le spese con + Spesa.</div></div>`;
   }, 4000);
 }
+// nuova versione dell'app Android pubblicata su GitHub? (controllo una volta al giorno)
+async function controllaVersioneApp(){
+  if(!APP) return;
+  const box = document.getElementById('avvisoVersione'); if(!box) return;
+  try{
+    const oggi = isoDate(today());
+    let info = JSON.parse(localStorage.getItem('versioneApk')||'{}');
+    if(info.giorno!==oggi){
+      const r = await fetch('https://api.github.com/repos/Rich073-debug/App_Finanze/releases/tags/apk', {cache:'no-store'});
+      const j = await r.json();
+      const m = /Versione\s+1\.(\d+)/.exec(j.body||'');
+      info = {giorno:oggi, ultima: m ? +m[1] : 0};
+      localStorage.setItem('versioneApk', JSON.stringify(info));
+    }
+    const mia = +((/1\.(\d+)/.exec(APP.versione())||[])[1]||0);
+    box.innerHTML = info.ultima > mia ? `<a class="card" style="display:block;text-decoration:none;color:inherit;border:1px solid var(--acc,#3ee6b4);margin-bottom:12px" href="https://github.com/Rich073-debug/App_Finanze/releases/download/apk/Finanze.apk">
+      <b>📲 Nuova versione dell'app (1.${info.ultima})</b><div class="muted" style="margin-top:4px">Tocca per scaricarla, poi aprila per installarla sopra: i dati restano.</div></a>` : '';
+  }catch(e){}
+}
 function renderApp(){
   const card = document.getElementById('cardApp'); if(!card) return;
+  const guida = document.getElementById('cardGuida'); if(guida) guida.style.display = APP ? 'none' : '';
   if(!APP){ card.style.display='none'; return; }
   card.style.display='';
   const ok = APP.permessoNotifiche();
@@ -1059,7 +1083,9 @@ function renderApp(){
     <div class="row"><div class="grow"><div class="t">Lettura dei pagamenti</div><div class="s">${ok?'Attiva: Wallet, banca, SMS della banca e PayPal vengono registrati da soli':'Non attiva: dai il permesso perché l\'app legga le notifiche dei pagamenti'}</div></div><div class="amt ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div></div>
     ${ok?'':`<button class="btn" style="width:100%;margin-top:8px" onclick="esternoFino=Date.now()+300000;APP.apriPermessoNotifiche()">Attiva la lettura dei pagamenti</button>`}
     ${typeof APP.diagnostica==='function' ? `<button class="btn sec" style="width:100%;margin-top:8px" onclick="controllaLettura()">🔍 Controlla la lettura</button>` : ''}
-    <p class="muted" style="font-size:13px">Versione app ${esc(APP.versione())}</p>`;
+    <p class="muted" style="font-size:13px">App ${esc(APP.versione())} · pagina del <span id="verPagina"></span>. Gli aggiornamenti arrivano da soli: quando apri l'app dopo un po' carica l'ultima versione, e se c'è una nuova app da installare te lo dice in Oggi.</p>
+    <button class="btn sec" style="width:100%;margin-top:6px" onclick="aggiornaApp()">🔄 Ricarica adesso</button>`;
+  const vp = document.getElementById('verPagina'); if(vp) vp.textContent = VERSIONE_PAGINA;
 }
 const NOMI_FONTI = {wallet:'Google Wallet', banca:'App della banca (Inbank)', paypal:'PayPal', sms:'Messaggi (SMS della banca)'};
 function quando(ts){ if(!ts) return 'mai'; const d = new Date(ts); return (isoDate(d)===isoDate(today()) ? 'oggi' : fDate(d))+' alle '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}); }
@@ -1136,6 +1162,7 @@ function render(){
   // ---- OGGI
   const r = document.getElementById('residuoOggi');
   r.textContent = fmt(c.residuoOggi);
+  if(APP && typeof APP.impostaResiduo==='function') try{ APP.impostaResiduo(c.residuoOggi); }catch(e){}
   r.className = 'big ' + (c.residuoOggi < 0 ? 'bad' : c.residuoOggi < c.budgetOggi*0.25 ? 'warn' : 'ok');
   document.getElementById('budgetOggiTxt').textContent = `Budget di oggi ${fmt(c.budgetOggi)} · speso ${fmt(c.spesoOggi)}`;
   const perc = c.budgetOggi>0 ? Math.min(100, Math.max(0, c.spesoOggi/c.budgetOggi*100)) : 100;
@@ -1867,7 +1894,8 @@ renderSicurezza();
 gestisciURL();
 if(doppioniTolti){ save(); dopoSblocco(()=>toast('🧹 Tolti '+doppioniTolti+' bonifici registrati due volte (saldo dei conti corretto)')); }
 if(!bloccato){ primoAvvio(); controllaBackup(); } else inAttesa.push(primoAvvio, controllaBackup);
-if(APP){ renderApp(); nuoveNotifiche(); controllaAvvisoLettura(); dopoSblocco(()=>setTimeout(chiediPermessoNotifiche, 900)); }
+document.getElementById('verWeb').textContent = VERSIONE_PAGINA;
+if(APP){ renderApp(); nuoveNotifiche(); controllaAvvisoLettura(); controllaVersioneApp(); dopoSblocco(()=>setTimeout(chiediPermessoNotifiche, 900)); }
 // se l'app è già aperta, un nuovo link con # non ricarica la pagina: lo intercettiamo qui
 window.addEventListener('hashchange', ()=>{ S = load(); gestisciURL(); });
 // aggiorna a mezzanotte / quando torni sull'app

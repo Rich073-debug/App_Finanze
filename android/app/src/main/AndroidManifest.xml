@@ -32,7 +32,20 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/scorciatoie" />
         </activity>
+
+        <!-- finestrella per aggiungere una spesa senza aprire l'app (tieni premuta l'icona) -->
+        <activity
+            android:name=".AggiungiSpesa"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleInstance"
+            android:theme="@style/Finestrella"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
 
         <service
             android:name=".AscoltaNotifiche"

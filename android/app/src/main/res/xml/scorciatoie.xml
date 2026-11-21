@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="spesa"
+        android:enabled="true"
+        android:icon="@drawable/ic_scorciatoia_spesa"
+        android:shortcutShortLabel="@string/scorciatoia_spesa"
+        android:shortcutLongLabel="@string/scorciatoia_spesa">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="finanze://spesa"
+            android:targetPackage="io.github.rich073.finanze"
+            android:targetClass="io.github.rich073.finanze.AggiungiSpesa" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="voce"
+        android:enabled="true"
+        android:icon="@drawable/ic_scorciatoia_voce"
+        android:shortcutShortLabel="@string/scorciatoia_voce"
+        android:shortcutLongLabel="@string/scorciatoia_voce">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="finanze://voce"
+            android:targetPackage="io.github.rich073.finanze"
+            android:targetClass="io.github.rich073.finanze.AggiungiSpesa" />
+    </shortcut>
+</shortcuts>

@@ -58,6 +58,12 @@ public class Ponte {
         return Diagnosi.inviaProva(a);
     }
 
+    /** La pagina comunica il "puoi ancora spendere oggi", da mostrare nella finestrella "Aggiungi spesa". */
+    @JavascriptInterface
+    public void impostaResiduo(double residuo) {
+        AggiungiSpesa.impostaResiduo(a, residuo);
+    }
+
     @JavascriptInterface
     public String versione() {
         return BuildConfig.VERSION_NAME;

@@ -87,6 +87,24 @@ final class Coda {
         }
     }
 
+    /** Spesa scritta o dettata dalla finestrella: l'app la registra alla prossima apertura. */
+    static synchronized void aggiungiSpesa(Context c, double importo, String desc) {
+        try {
+            SharedPreferences p = sp(c);
+            JSONArray eventi = new JSONArray(p.getString("eventi", "[]"));
+            long id = p.getLong("prossimo", 1);
+            JSONObject e = new JSONObject();
+            e.put("id", id);
+            e.put("ts", System.currentTimeMillis());
+            e.put("tipo", "spesa");
+            e.put("importo", importo);
+            e.put("desc", desc);
+            eventi.put(e);
+            p.edit().putString("eventi", eventi.toString()).putLong("prossimo", id + 1).commit();
+        } catch (Exception ignored) {
+        }
+    }
+
     static synchronized String leggi(Context c) {
         return sp(c).getString("eventi", "[]");
     }
