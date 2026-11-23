@@ -788,11 +788,12 @@ function aggiungiMovimento({importo, fonte='contanti', desc='', cat=null, tipo=n
   }
   const m = { id:uid(), ts, importo, fonte, desc:desc.trim(), cat: cat || indovinaCategoria(desc), tipo, rif };
   S.movimenti.push(m);
-  if(tipo==='annuale' && rif){ segnaAnnualePagata(rif, false); }
+  if(tipo==='annuale' && rif){ pagaAnnuale(rif, m); return m; }
   if(tipo==='fissa' && rif){ S.periodo.pagate=S.periodo.pagate||{}; S.periodo.pagate[rif]=true; }
   if(tipo==='fissa' && rif){ const f=S.fisse.find(x=>x.id===rif); if(f && f.conto){ S.periodo.spostati=S.periodo.spostati||{}; S.periodo.spostati['f_'+f.id]=true; } }
   save(); render();
   const c = calcola();
+  if(tipo==='var'){ const cand = scadenzaCandidata(m); if(cand){ if(bloccato) dopoSblocco(()=>chiediSeScadenza(m.id, cand.id)); else chiediSeScadenza(m.id, cand.id); return m; } }
   if(bloccato) toast('✓ Spesa registrata');
   else if(tipo==='var') toast(`✓ ${fmt(importo)} — oggi ti restano ${fmt(c.residuoOggi)}`, 'Annulla', ()=>eliminaMovimento(m.id));
   else toast(tipo==='giro' ? `✓ ${fmt(importo)} spostati tra i tuoi conti (non toccano il budget)` : `✓ ${fmt(importo)} registrata come spesa ${tipo==='fissa'?'fissa':'annuale'} (non tocca il budget giornaliero)`, 'Annulla', ()=>eliminaMovimento(m.id));
@@ -855,12 +856,47 @@ function sceltaAvanzo(scelta){
   }
   save(); closeSheet(); render(); toast('Fatto: '+fmt(imp)+' '+p.scelta);
 }
-function segnaAnnualePagata(id, registra=true){
-  const a = S.annuali.find(x=>x.id===id); if(!a) return;
-  if(registra) S.movimenti.push({id:uid(), ts:Date.now(), importo:a.importo, fonte:'manuale', desc:a.nome, cat:'Altro', tipo:'annuale', rif:a.id});
-  a.accantonato = 0;
-  if(a.scadenza){ const s=parseDate(a.scadenza); s.setFullYear(s.getFullYear()+1); a.scadenza = isoDate(s); }
+/* Pagamento di una scadenza (dentista, bollo…): i soldi escono dagli accantonati, non dal budget.
+   Se paghi più del messo da parte, la differenza conta come spesa di oggi; se paghi meno, quello che avanza torna nel budget.
+   Anche la quota di questo mese per quella scadenza si libera e torna nel budget. */
+function pagaAnnuale(id, m){
+  const a = S.annuali.find(x=>x.id===id); if(!a || !m) return;
+  const acc = round2(a.accantonato||0), pagato = round2(m.importo);
+  const coperto = round2(Math.min(pagato, acc)), extra = round2(pagato - coperto), avanzo = round2(acc - coperto);
+  m.tipo = 'annuale'; m.rif = a.id; m.importo = coperto; m.desc = m.desc || a.nome;
+  if(extra > 0) S.movimenti.push({id:uid(), ts:m.ts+1, importo:extra, fonte:m.fonte, desc:(m.desc||a.nome)+' (oltre il messo da parte)', cat:m.cat||'Salute', tipo:'var'});
+  if(avanzo > 0) S.entrate.push({id:uid(), data:isoDate(today()), importo:avanzo, nota:'Avanzato da '+a.nome});
+  if(coperto === 0) S.movimenti = S.movimenti.filter(x=>x!==m);
+  S.periodo.quote = Object.assign({}, S.periodo.quote, {[a.id]:0}); // la quota di questo mese non serve più
+  a.ultimoPagamento = {ts:m.ts, importo:pagato};
+  if(a.unaTantum) S.annuali = S.annuali.filter(x=>x!==a);
+  else { a.accantonato = 0; if(a.scadenza){ const d = parseDate(a.scadenza); d.setFullYear(d.getFullYear()+1); a.scadenza = isoDate(d); } }
   save(); render();
+  toast(`✓ ${a.nome}: ${fmt(coperto)} dagli accantonati`+(extra>0?` · ${fmt(extra)} dal budget`:'')+(avanzo>0?` · ${fmt(avanzo)} tornano nel budget`:''));
+}
+// pagamento segnato a mano dalla scheda della scadenza
+function segnaAnnualePagata(id){
+  const a = S.annuali.find(x=>x.id===id); if(!a) return;
+  openSheet(`<h3>✓ ${esc(a.nome)} pagata</h3>
+    <p class="muted">Messi da parte: ${fmt(a.accantonato||0)}. Se paghi di più, la differenza conta come spesa di oggi; se paghi di meno, il resto torna nel budget.</p>
+    <label>Quanto hai pagato (€)</label><input class="amount-input" id="pagImp" type="text" inputmode="decimal" value="${String(a.importo).replace('.',',')}">
+    <button class="btn" style="width:100%;margin-top:12px" onclick="const v=numeroIt(document.getElementById('pagImp').value.replace('€','')); if(isNaN(v)||v<0){toast('Importo non valido');return;} const m={id:uid(),ts:Date.now(),importo:round2(v),fonte:'manuale',desc:'${esc(a.nome).replace(/'/g,"\\'")}',cat:'Salute',tipo:'annuale'}; S.movimenti.push(m); closeSheet(); pagaAnnuale('${a.id}', m)">Conferma</button>`);
+}
+// una spesa appena arrivata potrebbe essere il pagamento di una scadenza vicina: chiediamolo
+function scadenzaCandidata(m){
+  const oggi = today();
+  return S.annuali.find(a=>{
+    if(!(a.accantonato>0) || !a.scadenza) return false;
+    const gg = daysBetween(oggi, parseDate(a.scadenza));
+    return gg <= 45 && gg >= -30 && m.importo >= a.importo*0.65 && m.importo <= a.importo*1.35;
+  });
+}
+function chiediSeScadenza(mid, aid){
+  const m = S.movimenti.find(x=>x.id===mid), a = S.annuali.find(x=>x.id===aid); if(!m || !a) return;
+  openSheet(`<h3>È il pagamento di ${esc(a.nome)}?</h3>
+    <p class="muted">${esc(m.desc||'Spesa')} · ${fmt(m.importo)}. Per ${esc(a.nome)} hai messo da parte ${fmt(a.accantonato)}.</p>
+    <button class="btn" style="width:100%;margin-top:6px" onclick="closeSheet();pagaAnnuale('${a.id}', S.movimenti.find(x=>x.id==='${m.id}'))">Sì, usa i soldi messi da parte</button>
+    <button class="btn sec" style="width:100%;margin-top:8px" onclick="closeSheet()">No, è una spesa normale</button>`);
 }
 
 /* =====================================================================
@@ -1291,7 +1327,7 @@ function renderReport(){
    qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
    ===================================================================== */
 const APP = window.FinanzeAndroid || null;
-const VERSIONE_PAGINA = '23 novembre 2026';
+const VERSIONE_PAGINA = '23 novembre 2026 (2)';
 var ORA_NOTIFICA = 0;
 let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
 function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
@@ -1560,7 +1596,7 @@ function render(){
     + `<div class="row"><div class="grow"><b>Totale mensile</b></div><div class="amt">${fmt(c.fisse)}</div></div>` : '<div class="empty">Nessuna spesa fissa</div>';
   document.getElementById('annualiList').innerHTML = S.annuali.length ? S.annuali.map(a=>{
     const p = Math.min(100,(a.accantonato||0)/a.importo*100);
-    return `<div class="row" onclick="editAnnuale('${a.id}')" style="display:block"><div style="display:flex;justify-content:space-between"><div class="t">${esc(a.nome)}</div><div class="amt">${fmt(a.importo)}</div></div><div class="s">${a.scadenza?'Scadenza '+parseDate(a.scadenza).toLocaleDateString('it-IT'):'<span class="warn">Data di scadenza mancante</span>'} · quota ${fmt(quotaAnnuale(a))}/mese</div><div class="bar" style="margin:8px 0 0;height:6px"><div style="width:${p}%"></div></div><div class="s">Accantonati ${fmt(a.accantonato||0)}</div></div>`;}).join('') : '<div class="empty">Nessuna scadenza</div>';
+    return `<div class="row" onclick="editAnnuale('${a.id}')" style="display:block"><div style="display:flex;justify-content:space-between"><div class="t">${esc(a.nome)}${a.unaTantum?' <span class="tag">una tantum</span>':''}</div><div class="amt">${fmt(a.importo)}</div></div><div class="s">${a.scadenza?'Scadenza '+parseDate(a.scadenza).toLocaleDateString('it-IT'):'<span class="warn">Data di scadenza mancante</span>'} · quota ${fmt(quotaAnnuale(a))}/mese</div><div class="bar" style="margin:8px 0 0;height:6px"><div style="width:${p}%"></div></div><div class="s">Accantonati ${fmt(a.accantonato||0)}</div></div>`;}).join('') : '<div class="empty">Nessuna scadenza</div>';
   const entrateP = [...S.entrate].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,10);
   document.getElementById('entrateList').innerHTML = entrateP.length ? entrateP.map(e=>
     `<div class="row" onclick="editEntrata('${e.id}')"><div class="grow"><div class="t">${esc(e.nota||'Entrata')}</div><div class="s">${parseDate(e.data).toLocaleDateString('it-IT')}${parseDate(e.data)>=c.inizio?' · in questo periodo':''}</div></div><div class="amt ok">+${fmt(e.importo)}</div></div>`).join('') : '<div class="empty">Nessuna entrata extra</div>';
@@ -1627,16 +1663,22 @@ function editMov(id){
       <option value="fissa" ${m.tipo==='fissa'?'selected':''}>Spesa fissa (già considerata)</option>
       <option value="annuale" ${m.tipo==='annuale'?'selected':''}>Scadenza annuale (già accantonata)</option>
       <option value="giro" ${m.tipo==='giro'?'selected':''}>Esclusa (giroconto, risparmio…)</option></select>
+    ${S.annuali.length && m.tipo!=='annuale' ? `<div id="eRifBox" style="display:none"><label>Quale scadenza?</label><select id="eRif">${S.annuali.map(a=>`<option value="${a.id}">${esc(a.nome)} · messi da parte ${fmt(a.accantonato||0)}</option>`).join('')}</select></div>` : ''}
     <label>Categoria</label><div class="chips" id="aCats">${categorie().map(k=>`<button class="chip ${k===addCat?'on':''}" data-c="${k}">${k}</button>`).join('')}</div>
     <div class="grid2" style="margin-top:18px"><button class="btn danger" onclick="eliminaMovimento('${id}');closeSheet()">Elimina</button><button class="btn" onclick="salvaMov('${id}')">Salva</button></div>`);
   wireChips();
+  const sel = document.getElementById('eTipo'), box = document.getElementById('eRifBox');
+  if(box) sel.onchange = ()=>{ box.style.display = sel.value==='annuale' ? '' : 'none'; };
 }
 function salvaMov(id){
   const m = S.movimenti.find(x=>x.id===id);
   const v = numeroIt(document.getElementById('eImp').value); if(!isNaN(v)&&v>0) m.importo = round2(v);
   m.desc = document.getElementById('eDesc').value.trim();
   const ts = new Date(document.getElementById('eTs').value).getTime(); if(!isNaN(ts)) m.ts = ts;
-  m.tipo = document.getElementById('eTipo').value; m.cat = addCat;
+  const nuovoTipo = document.getElementById('eTipo').value; m.cat = addCat;
+  const rif = document.getElementById('eRif')?.value;
+  if(nuovoTipo==='annuale' && m.tipo!=='annuale' && rif){ closeSheet(); pagaAnnuale(rif, m); return; }
+  m.tipo = nuovoTipo;
   save(); closeSheet(); render();
 }
 
@@ -1670,15 +1712,16 @@ function editAnnuale(id){
     <label>Importo (€)</label><input id="nImp" type="text" inputmode="decimal" value="${String(a.importo).replace('.',',')}">
     <label>Prossima scadenza</label><input id="nScad" type="date" value="${a.scadenza}">
     <label>Già messo da parte (€)</label><input id="nAcc" type="text" inputmode="decimal" value="${String(a.accantonato||0).replace('.',',')}">
-    <label>Parole per riconoscerla nelle notifiche</label><input id="nParole" value="${esc(a.parole)}">
-    ${id?`<button class="btn sec" style="width:100%;margin-top:16px" onclick="segnaAnnualePagata('${id}');closeSheet();toast('Pagata! Scadenza spostata di un anno')">✓ L'ho pagata</button>`:''}
+    <label>Parole per riconoscerla nelle notifiche</label><input id="nParole" value="${esc(a.parole)}" placeholder="es. nome dello studio">
+    <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="nUna" style="width:auto" ${a.unaTantum?'checked':''}> Una tantum: dopo il pagamento la voce sparisce</label>
+    ${id?`<button class="btn sec" style="width:100%;margin-top:16px" onclick="segnaAnnualePagata('${id}')">✓ L'ho pagata</button>`:''}
     <div class="grid2" style="margin-top:10px">${id?`<button class="btn danger" onclick="S.annuali=S.annuali.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaAnnuale('${id||''}')">Salva</button></div>`);
 }
 function salvaAnnuale(id){
   const v = numeroIt(document.getElementById('nImp').value), nome=document.getElementById('nNome').value.trim();
   if(!nome || isNaN(v)){ toast('Inserisci nome e importo'); return; }
   const acc = numeroIt(document.getElementById('nAcc').value||'0');
-  const dati = {nome, importo:round2(v), scadenza:document.getElementById('nScad').value, accantonato:isNaN(acc)?0:round2(acc), parole:document.getElementById('nParole').value.trim()};
+  const dati = {nome, importo:round2(v), scadenza:document.getElementById('nScad').value, accantonato:isNaN(acc)?0:round2(acc), parole:document.getElementById('nParole').value.trim(), unaTantum:document.getElementById('nUna').checked};
   if(id) Object.assign(S.annuali.find(x=>x.id===id), dati); else S.annuali.push({id:uid(), ...dati});
   save(); closeSheet(); render();
 }
