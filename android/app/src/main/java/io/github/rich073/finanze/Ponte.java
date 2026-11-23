@@ -118,6 +118,45 @@ public class Ponte {
         }
     }
 
+    /** Salva un file binario (es. il report Excel) nella cartella Download. */
+    @JavascriptInterface
+    public boolean salvaBase64(String nome, String mime, String base64) {
+        try {
+            byte[] dati = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+            ContentValues v = new ContentValues();
+            v.put(MediaStore.Downloads.DISPLAY_NAME, nome);
+            v.put(MediaStore.Downloads.MIME_TYPE, mime);
+            Uri u = a.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+            if (u == null) return false;
+            try (OutputStream o = a.getContentResolver().openOutputStream(u)) {
+                if (o == null) return false;
+                o.write(dati);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Condivide un file binario (es. il report Excel) con Drive, email, WhatsApp… */
+    @JavascriptInterface
+    public void condividiBase64(String nome, String mime, String base64) {
+        try {
+            byte[] dati = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+            File f = new File(a.getCacheDir(), nome);
+            try (FileOutputStream o = new FileOutputStream(f)) {
+                o.write(dati);
+            }
+            Uri u = FileProvider.getUriForFile(a, a.getPackageName() + ".file", f);
+            Intent s = new Intent(Intent.ACTION_SEND)
+                    .setType(mime)
+                    .putExtra(Intent.EXTRA_STREAM, u)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            a.runOnUiThread(() -> a.startActivity(Intent.createChooser(s, nome)));
+        } catch (Exception ignored) {
+        }
+    }
+
     /** Invia il backup a Google Drive, email, WhatsApp… */
     @JavascriptInterface
     public void condividiFile(String nome, String testo) {

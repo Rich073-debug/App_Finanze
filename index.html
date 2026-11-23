@@ -177,6 +177,11 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
   </div>
   <div class="card" id="movRiepilogo"></div>
   <div class="card"><div id="movList"></div></div>
+  <div class="card">
+    <div class="card-h"><h2>Report dei cicli</h2></div>
+    <p class="muted" style="margin-top:0">Un file Excel per ogni ciclo, da uno stipendio all'altro.</p>
+    <div id="reportList"></div>
+  </div>
 </section>
 
 <!-- ============ FISSE ============ -->
@@ -805,11 +810,14 @@ function nuovoStipendio(importo, dataStr){
   const c = calcola();
   S.annuali.forEach(a=>{ a.accantonato = round2(Math.min(a.importo, (a.accantonato||0) + quotaAnnuale(a))); });
   const avanzo = round2(c.disponibile - c.spesoTot);
-  const chiuso = { inizio:S.periodo.inizio, fine:isoDate(new Date(parseDate(dataStr)-DAY)), stipendio:c.stip, disponibile:round2(c.disponibile), speso:round2(c.spesoTot), avanzo };
+  // fotografia del ciclo per il report (i numeri restano quelli di allora anche se poi cambi le impostazioni)
+  const chiuso = { inizio:S.periodo.inizio, fine:isoDate(new Date(parseDate(dataStr)-DAY)), stipendio:c.stip, disponibile:round2(c.disponibile), speso:round2(c.spesoTot), avanzo,
+    entrate:round2(c.entrate), fisse:round2(c.fisse), quote:round2(c.quote), risparmio:round2(c.risparmio), giorniTot:Math.max(1, daysBetween(c.inizio, new Date(parseDate(dataStr)-DAY))+1),
+    scadenze:S.annuali.map(a=>({nome:a.nome, importo:a.importo, scadenza:a.scadenza, accantonato:a.accantonato||0})), report:Date.now() };
   S.storicoPeriodi.push(chiuso);
   S.periodo = { inizio:dataStr, stipendio:importo, spostati:{}, pagate:{} };
   save(); render();
-  toast(`💶 Nuovo periodo iniziato! Stipendio ${fmt(importo)}`);
+  toast(`💶 Nuovo periodo iniziato! Il report del ciclo chiuso è in Movimenti`);
   if(Math.abs(avanzo) >= 1) resocontoPeriodo(chiuso);
 }
 /* resoconto del periodo appena chiuso: cosa fare con l'avanzo (o lo sforamento) */
@@ -817,6 +825,7 @@ function resocontoPeriodo(p){
   const intest = `<h3>📊 Periodo chiuso</h3>
     <p class="muted">Dal ${parseDate(p.inizio).toLocaleDateString('it-IT')} al ${parseDate(p.fine).toLocaleDateString('it-IT')}: avevi ${fmt(p.disponibile)} per le spese di tutti i giorni e ne hai spesi ${fmt(p.speso)}.</p>`
     + `<div class="row"><div class="grow"><div class="t">🔒 Messi da parte per le scadenze</div><div class="s">Bollo, assicurazione, spese previste… Restano sul conto principale: non devi fare niente</div></div><div class="amt">${fmt(S.annuali.reduce((t,x)=>t+(+x.accantonato||0),0))}</div></div>`
+    + `<div class="row" onclick="apriReport('${p.inizio}')" style="cursor:pointer"><div class="grow"><div class="t">📊 Report del ciclo pronto</div><div class="s">Lo trovi anche in Movimenti → Report dei cicli</div></div><div class="amt">›</div></div>`
     + (riservaConto()>0 ? `<div class="row"><div class="grow"><div class="t">🐖 Risparmi già lasciati sul conto</div><div class="s">Dai mesi passati</div></div><div class="amt">${fmt(riservaConto())}</div></div>` : '');
   const conti = S.conti.filter(k=>!k.busta);
   if(p.avanzo > 0){
@@ -1034,11 +1043,255 @@ function gestisciURL(){
 }
 
 /* =====================================================================
+   REPORT EXCEL DEI CICLI (da uno stipendio all'altro)
+   Il file .xlsx viene creato qui, sul telefono: nessun dato esce dall'app.
+   ===================================================================== */
+const XL = (()=>{
+  const enc = new TextEncoder();
+  const escX = v => String(v??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'');
+  const col = n => { let s=''; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
+  // stili: 0 normale, 1 euro, 2 percentuale, 3 intestazione, 4 data, 5 titolo, 6 euro grassetto, 7 grassetto, 8 euro rosso, 9 euro verde
+  const STILI = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00\\ &quot;€&quot;"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy"/><numFmt numFmtId="166" formatCode="0.0%"/></numFmts>
+<fonts count="5"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="15"/><color rgb="FF111827"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FFC2410C"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF4D7C0F"/><name val="Calibri"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE0F2FE"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style="thin"><color rgb="FF94A3B8"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="10">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="164" fontId="3" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>
+<xf numFmtId="164" fontId="4" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+  const serial = d => (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899,11,30)) / 86400000;
+  // cella: numero, testo, {v, s} oppure {d: Date}
+  function cella(ref, x){
+    if(x===null || x===undefined || x==='') return '';
+    if(x instanceof Date) return `<c r="${ref}" s="4"><v>${serial(x)}</v></c>`;
+    if(typeof x === 'object'){
+      if(x.d instanceof Date) return `<c r="${ref}" s="${x.s??4}"><v>${serial(x.d)}</v></c>`;
+      if(typeof x.v === 'number') return isFinite(x.v) ? `<c r="${ref}" s="${x.s||0}"><v>${Math.round(x.v*10000)/10000}</v></c>` : '';
+      return `<c r="${ref}" t="inlineStr" s="${x.s||0}"><is><t xml:space="preserve">${escX(x.v)}</t></is></c>`;
+    }
+    if(typeof x === 'number') return isFinite(x) ? `<c r="${ref}"><v>${Math.round(x*10000)/10000}</v></c>` : '';
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escX(x)}</t></is></c>`;
+  }
+  function foglio({righe, larghezze=[], blocca=0, filtro=null}){
+    const rows = righe.map((r,i)=>`<row r="${i+1}">${(r||[]).map((x,j)=>cella(col(j)+(i+1), x)).join('')}</row>`).join('');
+    const cols = larghezze.length ? `<cols>${larghezze.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>` : '';
+    const view = blocca ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${blocca}" topLeftCell="A${blocca+1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` : '';
+    const af = filtro ? `<autoFilter ref="${filtro}"/>` : '';
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${view}${cols}<sheetData>${rows}</sheetData>${af}</worksheet>`;
+  }
+  // zip senza compressione (STORE)
+  const CRC = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; } return t; })();
+  const crc32 = b => { let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c = CRC[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  function zip(files){
+    const parti=[], centrale=[]; let off=0;
+    const u16=v=>[v&255,(v>>>8)&255], u32=v=>[v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255];
+    files.forEach(f=>{
+      const nome=enc.encode(f.nome), dati=enc.encode(f.testo), c=crc32(dati);
+      const loc=[...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(dati.length),...u32(dati.length),...u16(nome.length),...u16(0)];
+      parti.push(new Uint8Array(loc), nome, dati);
+      centrale.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(dati.length),...u32(dati.length),...u16(nome.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]), nome);
+      off += loc.length + nome.length + dati.length;
+    });
+    const lenC = centrale.reduce((t,p)=>t+p.length,0);
+    const fine = new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(lenC),...u32(off),...u16(0)]);
+    const tutto=[...parti,...centrale,fine], out=new Uint8Array(tutto.reduce((t,p)=>t+p.length,0)); let k=0;
+    tutto.forEach(p=>{ out.set(p,k); k+=p.length; }); return out;
+  }
+  function cartella(fogli){
+    const files=[
+      {nome:'[Content_Types].xml', testo:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${fogli.map((f,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
+      {nome:'_rels/.rels', testo:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+      {nome:'xl/workbook.xml', testo:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${fogli.map((f,i)=>`<sheet name="${escX(f.nome)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${fogli.some(f=>f.filtro)?`<definedNames>${fogli.map((f,i)=>f.filtro?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${escX(f.nome)}'!$${f.filtro.replace(':',':$').replace(/([A-Z]+)(\d+)/g,'$1$$$2')}</definedName>`:'').join('')}</definedNames>`:''}</workbook>`},
+      {nome:'xl/_rels/workbook.xml.rels', testo:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${fogli.map((f,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${fogli.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+      {nome:'xl/styles.xml', testo:STILI},
+      ...fogli.map((f,i)=>({nome:`xl/worksheets/sheet${i+1}.xml`, testo:foglio(f)}))
+    ];
+    return zip(files);
+  }
+  return {cartella};
+})();
+
+const H = v => ({v, s:3}), EUR = v => ({v:round2(v), s:1}), EURB = v => ({v:round2(v), s:6}), PERC = v => ({v, s:2}), B = v => ({v, s:7});
+const EURD = v => ({v:round2(v), s: v>0.005 ? 8 : v<-0.005 ? 9 : 1}); // differenze: più spesa in arancio, meno in verde
+const GIORNI_SETT = ['dom','lun','mar','mer','gio','ven','sab'];
+
+// i cicli disponibili: quello in corso e quelli chiusi (dallo storico)
+function cicliReport(){
+  const c = calcola();
+  const corrente = { corrente:true, inizio:S.periodo.inizio, fine:isoDate(c.fine), fineDati:isoDate(today()), stipendio:c.stip, entrate:round2(c.entrate), fisse:round2(c.fisse), quote:round2(c.quote), risparmio:round2(c.risparmio), disponibile:round2(c.disponibile), giorniTot:c.giorniTot, scadenze:S.annuali.map(a=>({nome:a.nome, importo:a.importo, scadenza:a.scadenza, accantonato:a.accantonato||0})) };
+  return [corrente, ...[...(S.storicoPeriodi||[])].reverse()];
+}
+function movimentiCiclo(p){
+  const da = parseDate(p.inizio).getTime(), a = parseDate(p.fineDati||p.fine).getTime() + DAY;
+  return S.movimenti.filter(m=>m.ts>=da && m.ts<a).sort((x,y)=>x.ts-y.ts);
+}
+function categorieCiclo(p){
+  const tot = {};
+  movimentiCiclo(p).filter(m=>m.tipo==='var').forEach(m=>{ const k = m.cat||'Generale'; (tot[k] = tot[k]||{tot:0,n:0}); tot[k].tot += m.importo; tot[k].n++; });
+  return tot;
+}
+const nomeNegozio = d => String(d||'').replace(/\s+/g,' ').trim().replace(/^(pre-addebito|pagamento)\s+pos\s+(italia\s+)?/i,'').replace(/\s+\d{2,}.*$/,'').toLowerCase().replace(/(^|\s)\S/g,x=>x.toUpperCase()) || 'Senza nome';
+
+function creaReport(p){
+  const cicli = cicliReport();
+  const idx = cicli.findIndex(x=>x.inizio===p.inizio);
+  const prec = cicli[idx+1] || null;
+  const mov = movimentiCiclo(p), varie = mov.filter(m=>m.tipo==='var');
+  const speso = round2(varie.reduce((t,m)=>t+m.importo,0));
+  const inizio = parseDate(p.inizio), fine = parseDate(p.fine), fineDati = parseDate(p.fineDati||p.fine);
+  const giorniTot = p.giorniTot || Math.max(1, daysBetween(inizio, fine)+1);
+  const giorniFatti = Math.max(1, Math.min(giorniTot, daysBetween(inizio, fineDati)+1));
+  const disponibile = p.disponibile ?? 0;
+  const budgetMedio = disponibile / giorniTot;
+  const titolo = `NotiPay · ciclo dal ${parseDate(p.inizio).toLocaleDateString('it-IT')} al ${fine.toLocaleDateString('it-IT')}${p.corrente?' (in corso)':''}`;
+
+  // ---- giorno per giorno
+  const perGiorno = [];
+  let cum = 0;
+  for(let i=0;i<giorniFatti;i++){
+    const d = new Date(inizio.getFullYear(), inizio.getMonth(), inizio.getDate()+i);
+    const s = varie.filter(m=>dayStart(m.ts).getTime()===d.getTime()).reduce((t,m)=>t+m.importo,0);
+    cum += budgetMedio - s;
+    perGiorno.push({d, s, diff: budgetMedio - s, cum});
+  }
+  const sopra = perGiorno.filter(g=>g.s > budgetMedio + 0.005);
+  const piuCaro = perGiorno.reduce((m,g)=>g.s>(m?.s||0)?g:m, null);
+
+  // ---- categorie
+  const cat = categorieCiclo(p), catPrec = prec ? categorieCiclo(prec) : {};
+  const nomiCat = [...new Set([...Object.keys(cat), ...Object.keys(catPrec)])].sort((a,b)=>(cat[b]?.tot||0)-(cat[a]?.tot||0));
+  const top = nomiCat[0];
+  const sbarra = v => '█'.repeat(Math.max(0, Math.round(v*25)));
+
+  // ---- riepilogo
+  const spesoPrec = prec ? round2(movimentiCiclo(prec).filter(m=>m.tipo==='var').reduce((t,m)=>t+m.importo,0)) : null;
+  // colore della differenza: verde se è un bene (più avanzo, meno spesa), arancio se è un male
+  const riga = (nome, v, vp, stile=EUR, senso=0) => [nome, stile(v), ...(prec ? [vp===null||vp===undefined ? '' : stile(vp), (vp===null||vp===undefined) ? '' : (senso>0 ? EURD(v - vp) : senso<0 ? {v:round2(v-vp), s: v-vp>0.005?9: v-vp<-0.005?8:1} : EUR(v - vp))] : [])];
+  const riep = [
+    [{v:titolo, s:5}],
+    [`Creato il ${new Date().toLocaleDateString('it-IT')} · spese di tutti i giorni (fisse, bonifici e giroconti esclusi)`],
+    [],
+    [H('Voce'), H(p.corrente?'Finora':'Questo ciclo'), ...(prec ? [H(p.corrente?'Ciclo precedente (intero)':'Ciclo precedente'), H('Differenza')] : [])],
+    riga('Stipendio', p.stipendio||0, prec?.stipendio),
+    riga('Entrate extra', p.entrate||0, prec?.entrate),
+    riga(S.fisse.some(f=>f.conto) ? 'Spese fisse (compreso PAC)' : 'Spese fisse', p.fisse||0, prec?.fisse),
+    riga('Accantonamenti scadenze', p.quote||0, prec?.quote),
+    ...((p.risparmio||prec?.risparmio) ? [riga('Risparmio da spostare', p.risparmio||0, prec?.risparmio)] : []),
+    riga('Disponibile per le spese', disponibile, prec?.disponibile, EURB),
+    riga('Speso (spese di tutti i giorni)', speso, spesoPrec, EURB, p.corrente?0:1),
+    riga(p.corrente ? 'Resta da spendere' : (disponibile-speso>=0 ? 'Avanzo' : 'Sforamento'), disponibile - speso, prec ? (prec.disponibile??0) - spesoPrec : null, EURB, p.corrente?0:-1),
+    riga('Spesa media al giorno', speso/giorniFatti, prec ? spesoPrec / (prec.giorniTot || Math.max(1, daysBetween(parseDate(prec.inizio), parseDate(prec.fine))+1)) : null, EUR, 1),
+    [],
+    [H('Indicatore'), H('Valore')],
+    ['Giorni del ciclo', giorniTot],
+    ...(p.corrente ? [['Giorni trascorsi', giorniFatti]] : []),
+    ['Budget medio al giorno', EUR(budgetMedio)],
+    ['Giorni sopra il budget medio', sopra.length],
+    ['Giorno più caro', piuCaro ? `${piuCaro.d.toLocaleDateString('it-IT')} · ${fmt(piuCaro.s)}` : '—'],
+    ['Categoria principale', top ? `${top} · ${fmt(cat[top]?.tot||0)} (${speso? Math.round((cat[top]?.tot||0)/speso*100):0}%)` : '—'],
+    ['Numero di acquisti', varie.length],
+    ['Spesa media per acquisto', EUR(varie.length ? speso/varie.length : 0)],
+  ];
+
+  // ---- foglio categorie
+  const fCat = [[{v:'Spese per categoria', s:5}], [],
+    [H('Categoria'), H('Totale'), H('% sul totale'), H('Acquisti'), H('Media per acquisto'), ...(prec?[H('Ciclo precedente'), H('Differenza')]:[]), H('Grafico')],
+    ...nomiCat.map(k=>{ const x = cat[k]||{tot:0,n:0}, xp = catPrec[k]; return [k, EUR(x.tot), PERC(speso? x.tot/speso : 0), x.n, EUR(x.n? x.tot/x.n : 0), ...(prec?[EUR(xp?.tot||0), EURD(x.tot-(xp?.tot||0))]:[]), sbarra(speso? x.tot/speso : 0)]; }),
+    [B('Totale'), EURB(speso), PERC(speso?1:0), varie.length, EUR(varie.length? speso/varie.length:0), ...(prec?[EURB(spesoPrec), EURD(speso-spesoPrec)]:[])]];
+
+  // ---- foglio giorni
+  const fGiorni = [[H('Data'), H('Giorno'), H('Speso'), H('Budget medio'), H('Differenza'), H('Margine accumulato')],
+    ...perGiorno.map(g=>[g.d, GIORNI_SETT[g.d.getDay()], EUR(g.s), EUR(budgetMedio), EURD(g.s - budgetMedio), EUR(g.cum)])];
+
+  // ---- foglio negozi e spese più alte
+  const negozi = {};
+  varie.forEach(m=>{ const n = nomeNegozio(m.desc); (negozi[n] = negozi[n]||{n:0,tot:0}); negozi[n].n++; negozi[n].tot += m.importo; });
+  const topNeg = Object.entries(negozi).sort((a,b)=>b[1].tot-a[1].tot).slice(0,15);
+  const topSpese = [...varie].sort((a,b)=>b.importo-a.importo).slice(0,10);
+  const fTop = [[{v:'Dove spendi di più', s:5}], [], [H('Negozio'), H('Volte'), H('Totale'), H('Media')],
+    ...topNeg.map(([n,x])=>[n, x.n, EUR(x.tot), EUR(x.tot/x.n)]),
+    [], [{v:'Le 10 spese più alte', s:5}], [], [H('Data'), H('Descrizione'), H('Categoria'), H('Importo')],
+    ...topSpese.map(m=>[new Date(m.ts), m.desc||'Spesa', m.cat||'', EUR(m.importo)])];
+
+  // ---- foglio movimenti (tutti, con filtri)
+  const TIPI = {var:'Spesa', fissa:'Fissa', annuale:'Scadenza', giro:'Bonifico / giroconto'};
+  const FONTI = {wallet:'Google Wallet', carta:'Carta', contanti:'Contanti', bonifico:'Banca', manuale:'A mano', banca:'Banca', paypal:'PayPal', sms:'SMS'};
+  const fMov = [[H('Data'), H('Ora'), H('Descrizione'), H('Categoria'), H('Tipo'), H('Fonte'), H('Importo')],
+    ...mov.map(m=>[new Date(m.ts), fTime(m.ts), m.desc||'', m.cat||'', TIPI[m.tipo]||m.tipo||'', FONTI[m.fonte]||m.fonte||'', EUR(m.importo)])];
+
+  // ---- foglio scadenze
+  const sc = (p.scadenze||[]);
+  const fSc = [[H('Scadenza'), H('Importo'), H('Data'), H('Messi da parte'), H('Mancano'), H('Pronta al')],
+    ...sc.map(a=>[a.nome, EUR(a.importo), a.scadenza ? parseDate(a.scadenza) : '—', EUR(Math.min(a.importo, a.accantonato||0)), EUR(Math.max(0, a.importo-(a.accantonato||0))), PERC(a.importo? Math.min(1,(a.accantonato||0)/a.importo):0)])];
+
+  const fogli = [
+    {nome:'Riepilogo', righe:riep, larghezze:[34,16,26,14]},
+    {nome:'Categorie', righe:fCat, larghezze:[20,13,13,10,18,...(prec?[17,13]:[]),28], blocca:3},
+    {nome:'Giorno per giorno', righe:fGiorni, larghezze:[12,9,12,14,13,19], blocca:1},
+    {nome:'Negozi e spese alte', righe:fTop, larghezze:[30,40,16,12]},
+    {nome:'Movimenti', righe:fMov, larghezze:[12,7,36,15,20,15,12], blocca:1, filtro: mov.length ? `A1:G${mov.length+1}` : null},
+    ...(sc.length ? [{nome:'Scadenze', righe:fSc, larghezze:[24,12,12,16,12,10], blocca:1}] : [])
+  ];
+  return XL.cartella(fogli);
+}
+
+const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+function nomeReport(p){ return `NotiPay report ${p.inizio}${p.corrente?' (in corso)':' - '+p.fine}.xlsx`; }
+function aBase64(u8){ let s=''; for(let i=0;i<u8.length;i+=0x8000) s += String.fromCharCode.apply(null, u8.subarray(i,i+0x8000)); return btoa(s); }
+async function scaricaReport(inizio, condividi){
+  const p = cicliReport().find(x=>x.inizio===inizio); if(!p) return;
+  let dati;
+  try{ dati = creaReport(p); }catch(e){ toast('⚠️ Non sono riuscito a creare il report: '+e.message); return; }
+  const nome = nomeReport(p);
+  if(APP){
+    if(typeof APP.salvaBase64!=='function'){ toast('Aggiorna l\'app per scaricare i report'); return; }
+    esternoFino = Date.now()+300000;
+    if(condividi) APP.condividiBase64(nome, MIME_XLSX, aBase64(dati));
+    else toast(APP.salvaBase64(nome, MIME_XLSX, aBase64(dati)) ? '📊 Report salvato nella cartella Download' : '⚠️ Non sono riuscito a salvarlo');
+    closeSheet(); return;
+  }
+  const file = new File([dati], nome, {type:MIME_XLSX});
+  if(condividi && navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file], title:nome}); }catch(e){} closeSheet(); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000); closeSheet();
+}
+function apriReport(inizio){
+  const p = cicliReport().find(x=>x.inizio===inizio); if(!p) return;
+  const speso = round2(movimentiCiclo(p).filter(m=>m.tipo==='var').reduce((t,m)=>t+m.importo,0));
+  openSheet(`<h3>📊 Report ${fDM(parseDate(p.inizio))} → ${fDM(parseDate(p.fine))}</h3>
+    <p class="muted">${p.corrente?'Ciclo in corso: i dati arrivano fino a oggi.':'Ciclo chiuso.'} Speso ${fmt(speso)} su ${fmt(p.disponibile||0)} disponibili.</p>
+    <p class="muted">Dentro: riepilogo, categorie, giorno per giorno, negozi e spese più alte, tutti i movimenti${(p.scadenze||[]).length?', scadenze':''}.</p>
+    <button class="btn" style="width:100%;margin-top:6px" onclick="scaricaReport('${p.inizio}')">⬇️ Scarica Excel</button>
+    <button class="btn sec" style="width:100%;margin-top:8px" onclick="scaricaReport('${p.inizio}', true)">📤 Condividi</button>`);
+}
+function renderReport(){
+  const el = document.getElementById('reportList'); if(!el) return;
+  el.innerHTML = cicliReport().map(p=>{
+    const speso = round2(movimentiCiclo(p).filter(m=>m.tipo==='var').reduce((t,m)=>t+m.importo,0));
+    const resto = round2((p.disponibile||0) - speso);
+    return `<div class="row ic" onclick="apriReport('${p.inizio}')" style="cursor:pointer"><div class="ico">📊</div><div class="grow"><div class="t">${fDM(parseDate(p.inizio))} → ${fDM(parseDate(p.fine))}${p.corrente?' <span class="tag">in corso</span>':''}</div><div class="s">Speso ${fmt0(speso)} · ${p.corrente?'restano':(resto>=0?'avanzo':'sforamento')} ${fmt0(Math.abs(resto))}</div></div><div class="amt">›</div></div>`;
+  }).join('');
+}
+
+/* =====================================================================
    APP ANDROID: le notifiche le legge l'app stessa e le mette in coda;
    qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
    ===================================================================== */
 const APP = window.FinanzeAndroid || null;
-const VERSIONE_PAGINA = '21 novembre 2026 (4)';
+const VERSIONE_PAGINA = '23 novembre 2026';
 var ORA_NOTIFICA = 0;
 let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
 function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
@@ -1280,6 +1533,7 @@ function render(){
 
   renderBusta();
   renderSaldi();
+  renderReport();
 
   // ---- MOVIMENTI
   let lista = [...S.movimenti].sort((a,b)=>b.ts-a.ts);
