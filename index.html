@@ -107,6 +107,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 <section class="view on" id="v-oggi">
   <div id="avvisoLettura"></div>
   <div id="avvisoVersione"></div>
+  <div id="avvisoClassifica"></div>
   <div class="card hero">
     <div class="label">Puoi spendere oggi</div>
     <div class="big" id="residuoOggi">—</div>
@@ -321,14 +322,27 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
    DATI
    ===================================================================== */
 const KEY = 'finanze_v1';
-const CATEGORIE_BASE = ['Generale','Spesa','Carburante','Ristorante','Casa','Salute','Svago','Altro'];
-const CAT_PROTETTE = ['Generale','Carburante']; // Generale = predefinita, Carburante = serve alla stima dei rifornimenti
+// categorie precise, così il report mostra davvero dove vanno i soldi
+const CAT_NUOVA = 'Da classificare';
+const CATEGORIE_BASE = [CAT_NUOVA,'Spesa','Bar e caffè','Ristorante','Carburante','Auto e trasporti','Casa','Bollette e servizi','Salute','Cura personale','Abbigliamento','Tecnologia e online','Svago','Regali','Tabacchi','Animali','Altro'];
+const CAT_PROTETTE = [CAT_NUOVA,'Carburante']; // Da classificare = quando l'app non sa, Carburante = serve alla stima dei rifornimenti
 function categorie(){ return (S.categorie && S.categorie.length) ? S.categorie : CATEGORIE_BASE; }
 const CAT_KEYWORDS = {
-  Carburante:['eni','q8','tamoil','esso','ip ','api ','carbur','benzin','distributore','agip','total','repsol','petrol','fuel','energas','enilive'],
-  Spesa:['supermerc','conad','coop','esselunga','lidl','eurospin','carrefour','gala','pam','md ','despar','iper','tigre','todis','penny','aldi','famila','sigma','crai','a&o','simply'],
-  Ristorante:['mc donald','mcdonald','burger','pizz','ristor','trattoria','bar ','caff','sushi','kebab','osteria','paninoteca','just eat','deliveroo','glovo'],
-  Salute:['farmac','parafarm','medic','ottica'],
+  'Carburante':[' eni ','q8','tamoil','esso',' ip ',' api ','carbur','benzin','distributore','agip','total','repsol','petrol','fuel','energas','enilive','metano',' gpl '],
+  'Spesa':['supermerc','conad','coop','esselunga','lidl','eurospin','carrefour','gala','pam ','md ','despar','iper','tigre','todis','penny','aldi','famila','sigma','crai','a&o','simply','alimentari','macelleria','panific','forno','frutta','ortofrutta','market','discount','spesa'],
+  'Bar e caffè':['bar ','caff','pasticc','gelat','dolce','cornett','bistrot','pub ','birreria','enoteca','tea room','starbucks','autogrill'],
+  'Ristorante':['mc donald','mcdonald','burger','pizz','ristor','trattoria','sushi','kebab','osteria','paninoteca','just eat','deliveroo','glovo','piadin','rosticc','tavola calda','agriturismo','braceria','steak','poke','food'],
+  'Auto e trasporti':['parchegg','parking','autostrad','pedagg','telepass','trenitalia','italo','busitalia','trasporto','taxi','uber','freenow','officina','gommist','autolavaggio','lavaggio','revisione','ricambi','autoricambi','norauto','moto'],
+  'Casa':['ikea','leroy','brico','obi ','ferramenta','mobili','arredo','casa','maisons','kasanova','tigota','acqua e sapone'],
+  'Bollette e servizi':['enel','hera','a2a','iren','acea','edison','vodafone','tim ','windtre','iliad','fastweb','ho.','very mobile','poste','bolletta','canone'],
+  'Salute':['farmac','parafarm','medic','ottica','dentist','odontoiatr','studio dent','clinica','ospedale','analisi','laborator','fisioter','veterinar'],
+  'Cura personale':['parrucch','barbier','estetic','profumer','douglas','sephora','kiko','acconciat','nails','cosmet'],
+  'Abbigliamento':['zalando','zara','h&m','ovs','bershka','pull&bear','primark','calzedonia','intimissimi','scarpe','footlocker','abbigliam','moda','boutique','benetton','piazza italia','shein','vinted'],
+  'Tecnologia e online':['amazon','amzn','mediaworld','unieuro','euronics','expert','trony','apple','google','ebay','aliexpress','temu','paypal *'],
+  'Svago':['cinema','uci ','the space','steam','playstation','nintendo','xbox','ticketone','concert','teatro','museo','bowling','palestra','piscina','decathlon','libreria','feltrinelli','mondadori','giochi'],
+  'Tabacchi':['tabacch','tabaccheria','sisal','lotto','snai'],
+  'Animali':['arcaplanet','zooplus','pet ','animal'],
+  'Regali':['regal','fiorist','gioiell'],
 };
 
 function defaultState(){
@@ -350,9 +364,30 @@ function defaultState(){
   };
 }
 let doppioniTolti = 0;
+// v6: categorie più precise; "Generale" diventa "Da classificare" e le spese vengono riassegnate dove possibile
+function migraCategorie(st){
+  if((st.v||5) >= 6) return st;
+  if(st.categorie && st.categorie.length){
+    const tenute = st.categorie.filter(c=>c!=='Generale');
+    st.categorie = [...new Set([CAT_NUOVA, ...CATEGORIE_BASE.slice(1).filter(c=>c!=='Altro'), ...tenute, 'Altro'])];
+  }
+  if(st.catParole && st.catParole['Generale']) delete st.catParole['Generale'];
+  const cats = (st.categorie && st.categorie.length) ? st.categorie : CATEGORIE_BASE;
+  (st.movimenti||[]).forEach(m=>{
+    const bar = m.cat==='Ristorante' && /\b(bar|caff|pasticc|gelat|dolce|cornett)/i.test(m.desc||'');
+    if(m.cat && m.cat!=='Generale' && !bar) return;
+    const d = ' '+(m.desc||'').toLowerCase()+' ';
+    let cat = null;
+    for(const [c,par] of Object.entries(st.catParole||{})) if(!cat && cats.includes(c) && String(par).split(',').some(k=>k.trim() && d.includes(k.trim().toLowerCase()))) cat = c;
+    for(const [c,kws] of Object.entries(CAT_KEYWORDS)) if(!cat && cats.includes(c) && kws.some(k=>d.includes(k))) cat = c;
+    m.cat = cat || (m.cat==='Generale' || !m.cat ? CAT_NUOVA : m.cat);
+  });
+  st.v = 6;
+  return st;
+}
 let S = load();
 function load(){
-  try{ const raw = localStorage.getItem(KEY); if(raw){ const st = Object.assign(defaultState(), JSON.parse(raw)); st.v = Math.max(st.v||1, 3); return migraDoppioni(migraBusta(st)); } }catch(e){}
+  try{ const raw = localStorage.getItem(KEY); if(raw){ const st = Object.assign(defaultState(), JSON.parse(raw)); st.v = Math.max(st.v||1, 3); return migraCategorie(migraDoppioni(migraBusta(st))); } }catch(e){}
   return defaultState();
 }
 // v5: toglie i bonifici registrati più volte dalla stessa notifica ripetuta (e corregge il saldo del conto)
@@ -747,12 +782,15 @@ function previsioneCarburante(){
 /* =====================================================================
    MOVIMENTI: aggiunta, duplicati, classificazione
    ===================================================================== */
+function chiaveNegozio(desc){ return nomeNegozio(desc).toLowerCase(); }
 function indovinaCategoria(desc){
   const d = ' '+(desc||'').toLowerCase()+' ';
+  const imparata = (S.catNegozi||{})[chiaveNegozio(desc)];
+  if(imparata && categorie().includes(imparata)) return imparata;
   // prima le parole scelte da te, poi quelle già previste
   for(const [cat,parole] of Object.entries(S.catParole||{})) if(categorie().includes(cat) && String(parole).split(',').some(k=>k.trim() && d.includes(k.trim().toLowerCase()))) return cat;
   for(const [cat,kws] of Object.entries(CAT_KEYWORDS)) if(categorie().includes(cat) && kws.some(k=>d.includes(k))) return cat;
-  return 'Generale';
+  return CAT_NUOVA;
 }
 // riconosce se un pagamento corrisponde a una spesa fissa o annuale
 function riconosciFissa(desc){
@@ -1176,10 +1214,10 @@ function movimentiCiclo(p){
 }
 function categorieCiclo(p){
   const tot = {};
-  movimentiCiclo(p).filter(m=>m.tipo==='var').forEach(m=>{ const k = m.cat||'Generale'; (tot[k] = tot[k]||{tot:0,n:0}); tot[k].tot += m.importo; tot[k].n++; });
+  movimentiCiclo(p).filter(m=>m.tipo==='var').forEach(m=>{ const k = m.cat||CAT_NUOVA; (tot[k] = tot[k]||{tot:0,n:0}); tot[k].tot += m.importo; tot[k].n++; });
   return tot;
 }
-const nomeNegozio = d => String(d||'').replace(/\s+/g,' ').trim().replace(/^(pre-addebito|pagamento)\s+pos\s+(italia\s+)?/i,'').replace(/\s+\d{2,}.*$/,'').toLowerCase().replace(/(^|\s)\S/g,x=>x.toUpperCase()) || 'Senza nome';
+function nomeNegozio(d){ return String(d||'').replace(/\s+/g,' ').trim().replace(/^(pre-addebito|pagamento)\s+pos\s+(italia\s+)?/i,'').replace(/\s+\d{2,}.*$/,'').toLowerCase().replace(/(^|\s)\S/g,x=>x.toUpperCase()) || 'Senza nome'; }
 
 function creaReport(p){
   const cicli = cicliReport();
@@ -1327,7 +1365,7 @@ function renderReport(){
    qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
    ===================================================================== */
 const APP = window.FinanzeAndroid || null;
-const VERSIONE_PAGINA = '23 novembre 2026 (2)';
+const VERSIONE_PAGINA = '27 novembre 2026';
 var ORA_NOTIFICA = 0;
 let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
 function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
@@ -1439,6 +1477,40 @@ function chiediPermessoNotifiche(){
    ===================================================================== */
 let vista='oggi', filtroMov='periodo';
 const TITOLI = {oggi:'Oggi', mov:'Movimenti', conti:'Conti', fisse:'Fisse e scadenze', imp:'Impostazioni', diag:'Diagnostica'};
+/* ---------- spese da classificare: l'app chiede una volta e poi impara il negozio ---------- */
+function daClassificare(){ const da = Date.now()-90*DAY; return S.movimenti.filter(m=>m.tipo==='var' && (m.cat===CAT_NUOVA || !m.cat) && m.ts>=da).sort((a,b)=>b.ts-a.ts); }
+function renderClassifica(){
+  const box = document.getElementById('avvisoClassifica'); if(!box) return;
+  const n = daClassificare().length;
+  box.innerHTML = n ? `<div class="card" style="border:1px solid var(--warn);margin-bottom:12px;cursor:pointer" onclick="classificaProssima()"><div class="row ic" style="padding:0;border:0"><div class="ico">🏷️</div><div class="grow"><div class="t">${n===1?'1 spesa da classificare':n+' spese da classificare'}</div><div class="s">Tocca per sistemarle: l'app impara il negozio</div></div><div class="amt">›</div></div></div>` : '';
+}
+function classificaProssima(){
+  const m = daClassificare()[0];
+  if(!m){ closeSheet(); toast('✓ Tutte le spese sono classificate'); return; }
+  const resto = daClassificare().length;
+  openSheet(`<h3>🏷️ Che spesa è?</h3>
+    <div class="row ic"><div class="ico">${FONTE_ICO[m.fonte]||'•'}</div><div class="grow"><div class="t">${esc(m.desc||'Spesa')}</div><div class="s">${fDateLong(new Date(m.ts))} · ${fTime(m.ts)}</div></div><div class="amt">${fmt(m.importo)}</div></div>
+    <div class="chips" style="margin-top:12px">${categorie().filter(c=>c!==CAT_NUOVA).map(c=>`<button class="chip" onclick="assegnaCategoria('${m.id}', this.dataset.c)" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <div class="grid2" style="margin-top:14px"><button class="btn sec" onclick="editCategoria()">＋ Nuova categoria</button><button class="btn sec" onclick="saltaClassifica('${m.id}')">Salta</button></div>
+    <p class="muted" style="font-size:13px">${resto>1?'Ne restano '+(resto-1)+' dopo questa. ':''}La prossima volta che spendi qui, l'app la classifica da sola.</p>`);
+}
+function impara(desc, cat){
+  if(!desc || !cat || cat===CAT_NUOVA) return 0;
+  const k = chiaveNegozio(desc); if(!k || k==='senza nome') return 0;
+  S.catNegozi = S.catNegozi||{}; S.catNegozi[k] = cat;
+  let altre = 0;
+  S.movimenti.forEach(x=>{ if((x.cat===CAT_NUOVA || !x.cat) && chiaveNegozio(x.desc)===k){ x.cat = cat; altre++; } });
+  return altre;
+}
+function assegnaCategoria(mid, cat){
+  const m = S.movimenti.find(x=>x.id===mid); if(!m) return;
+  m.cat = cat;
+  const altre = impara(m.desc, cat);
+  save(); render();
+  toast(`✓ ${nomeNegozio(m.desc)} → ${cat}`+(altre?` (anche altre ${altre})`:''));
+  classificaProssima();
+}
+function saltaClassifica(mid){ const m = S.movimenti.find(x=>x.id===mid); if(m){ m.cat = 'Altro'; save(); render(); } classificaProssima(); }
 function infoPeriodo(){
   const c = calcola();
   openSheet(`<h3>Periodo</h3>
@@ -1570,6 +1642,7 @@ function render(){
   renderBusta();
   renderSaldi();
   renderReport();
+  renderClassifica();
 
   // ---- MOVIMENTI
   let lista = [...S.movimenti].sort((a,b)=>b.ts-a.ts);
@@ -1626,9 +1699,9 @@ function render(){
 function openSheet(html){ if(bloccato){ inAttesa.push(()=>openSheet(html)); return; } document.getElementById('sheet').innerHTML = html; document.getElementById('sheetBg').classList.add('on'); }
 function closeSheet(){ document.getElementById('sheetBg').classList.remove('on'); stopVoce(); if(APP) setTimeout(nuoveNotifiche, 400); }
 
-let addCat = 'Generale', addFonte = 'contanti';
+let addCat = CAT_NUOVA, addFonte = 'contanti';
 function openAdd(){
-  addCat='Generale'; addFonte='contanti';
+  addCat=CAT_NUOVA; addFonte='contanti';
   openSheet(`<h3>Nuova spesa</h3>
     <input class="amount-input" id="aImp" type="text" inputmode="decimal" placeholder="0,00 €" autocomplete="off">
     <label>Descrizione (facoltativa)</label><input id="aDesc" placeholder="es. caffè, benzina…" oninput="autoCat(this.value)">
@@ -1642,7 +1715,7 @@ function wireChips(){
   document.querySelectorAll('#aCats .chip').forEach(b=>b.onclick=()=>{addCat=b.dataset.c;document.querySelectorAll('#aCats .chip').forEach(x=>x.classList.toggle('on',x===b));});
   document.querySelectorAll('#aFonti .chip').forEach(b=>b.onclick=()=>{addFonte=b.dataset.f;document.querySelectorAll('#aFonti .chip').forEach(x=>x.classList.toggle('on',x===b));});
 }
-function autoCat(v){ const c = indovinaCategoria(v); if(c!=='Generale'){ addCat=c; document.querySelectorAll('#aCats .chip').forEach(x=>x.classList.toggle('on',x.dataset.c===c)); } }
+function autoCat(v){ const c = indovinaCategoria(v); if(c!==CAT_NUOVA){ addCat=c; document.querySelectorAll('#aCats .chip').forEach(x=>x.classList.toggle('on',x.dataset.c===c)); } }
 function salvaAdd(){
   const v = numeroIt(document.getElementById('aImp').value.replace('€',''));
   if(!v || isNaN(v)){ toast('Inserisci un importo'); return; }
@@ -1675,7 +1748,8 @@ function salvaMov(id){
   const v = numeroIt(document.getElementById('eImp').value); if(!isNaN(v)&&v>0) m.importo = round2(v);
   m.desc = document.getElementById('eDesc').value.trim();
   const ts = new Date(document.getElementById('eTs').value).getTime(); if(!isNaN(ts)) m.ts = ts;
-  const nuovoTipo = document.getElementById('eTipo').value; m.cat = addCat;
+  const nuovoTipo = document.getElementById('eTipo').value;
+  if(addCat !== m.cat){ m.cat = addCat; impara(m.desc, addCat); }
   const rif = document.getElementById('eRif')?.value;
   if(nuovoTipo==='annuale' && m.tipo!=='annuale' && rif){ closeSheet(); pagaAnnuale(rif, m); return; }
   m.tipo = nuovoTipo;
@@ -1995,7 +2069,7 @@ function eliminaCategoria(nome){
 }
 function confermaEliminaCategoria(nome){
   S.categorie = categorie().filter(k=>k!==nome);
-  S.movimenti.forEach(m=>{ if(m.cat===nome) m.cat = 'Generale'; });
+  S.movimenti.forEach(m=>{ if(m.cat===nome) m.cat = CAT_NUOVA; });
   if(S.catParole) delete S.catParole[nome];
   save(); closeSheet(); render(); toast('Categoria eliminata');
 }
@@ -2097,7 +2171,7 @@ function fineSetup(){
   if(!isNaN(v)&&v) S.periodo.stipendio = v; else if(!isNaN(fx)&&fx) S.periodo.stipendio = fx;
   if(!isNaN(sp) && sp>0){
     const y = new Date(today()-DAY); y.setHours(12);
-    S.movimenti.push({id:uid(), ts:Math.max(parseDate(S.periodo.inizio).getTime()+12*3600000, Math.min(y.getTime(), Date.now())), importo:round2(sp), fonte:'manuale', desc:'Spese precedenti (stima)', cat:'Generale', tipo:'var'});
+    S.movimenti.push({id:uid(), ts:Math.max(parseDate(S.periodo.inizio).getTime()+12*3600000, Math.min(y.getTime(), Date.now())), importo:round2(sp), fonte:'manuale', desc:'Spese precedenti (stima)', cat:'Altro', tipo:'var'});
   }
   S.setupFatto = true; save(); closeSheet(); render();
 }
