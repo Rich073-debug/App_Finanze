@@ -149,6 +149,8 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
 
 <!-- ============ CONTI ============ -->
 <section class="view" id="v-conti">
+  <div class="card" id="cardFondo" onclick="impostaFondo()" style="cursor:pointer"></div>
+
   <div class="card">
     <div class="card-h"><h2>Conto principale</h2><button class="info" onclick="infoConto()" aria-label="Dettagli">i</button></div>
     <div id="pianoResta"></div>
@@ -196,7 +198,7 @@ code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12.5px;
     <h2>Scadenze annuali</h2>
     <p class="muted" style="margin-top:0">Una quota al mese, così alla scadenza i soldi ci sono.</p>
     <div id="annualiList"></div>
-    <button class="btn sec small" style="margin-top:10px" onclick="editAnnuale()">＋ Aggiungi scadenza</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn sec small" onclick="editAnnuale()">＋ Aggiungi scadenza</button><button class="btn sec small" id="btnImprevisti" onclick="editAnnuale('imprevisti')">🔧 Riserva imprevisti</button></div>
   </div>
   <div class="card">
     <h2>Abbonamenti</h2>
@@ -463,6 +465,7 @@ function mesiAllaScadenza(a, inizioStr){
 }
 function quotaAuto(a, inizioStr = S.periodo.inizio){
   const resto = Math.max(0, a.importo - (a.accantonato||0));
+  if(a.senzaData) return round2(Math.min(+a.quotaFissa||0, resto)); // riserva imprevisti: quota fissa fino al tetto
   return round2(resto / mesiAllaScadenza(a, inizioStr));
 }
 // quota del mese: quella calcolata dall'app, oppure quella scelta a mano per questo periodo
@@ -864,6 +867,7 @@ function resocontoPeriodo(p){
   const intest = `<h3>📊 Periodo chiuso</h3>
     <p class="muted">Dal ${parseDate(p.inizio).toLocaleDateString('it-IT')} al ${parseDate(p.fine).toLocaleDateString('it-IT')}: avevi ${fmt(p.disponibile)} per le spese di tutti i giorni e ne hai spesi ${fmt(p.speso)}.</p>`
     + `<div class="row"><div class="grow"><div class="t">🔒 Messi da parte per le scadenze</div><div class="s">Bollo, assicurazione, spese previste… Restano sul conto principale: non devi fare niente</div></div><div class="amt">${fmt(S.annuali.reduce((t,x)=>t+(+x.accantonato||0),0))}</div></div>`
+    + (()=>{ const st = S.storicoPeriodi||[], i = st.findIndex(x=>x.inizio===p.inizio), co = consigliCiclo(p, i>0 ? st[i-1] : null); return co.length ? `<div style="margin:10px 0"><b>💡 Consigli</b>${co.map(x=>`<div class="s muted" style="margin-top:6px">• ${esc(x)}</div>`).join('')}</div>` : ''; })()
     + `<div class="row" onclick="apriReport('${p.inizio}')" style="cursor:pointer"><div class="grow"><div class="t">📊 Report del ciclo pronto</div><div class="s">Lo trovi anche in Movimenti → Report dei cicli</div></div><div class="amt">›</div></div>`
     + (riservaConto()>0 ? `<div class="row"><div class="grow"><div class="t">🐖 Risparmi già lasciati sul conto</div><div class="s">Dai mesi passati</div></div><div class="amt">${fmt(riservaConto())}</div></div>` : '');
   const conti = S.conti.filter(k=>!k.busta);
@@ -900,13 +904,15 @@ function sceltaAvanzo(scelta){
 function pagaAnnuale(id, m){
   const a = S.annuali.find(x=>x.id===id); if(!a || !m) return;
   const acc = round2(a.accantonato||0), pagato = round2(m.importo);
-  const coperto = round2(Math.min(pagato, acc)), extra = round2(pagato - coperto), avanzo = round2(acc - coperto);
+  const coperto = round2(Math.min(pagato, acc)), extra = round2(pagato - coperto);
+  const avanzo = a.senzaData ? 0 : round2(acc - coperto); // la riserva imprevisti tiene quello che resta
   m.tipo = 'annuale'; m.rif = a.id; m.importo = coperto; m.desc = m.desc || a.nome;
   if(extra > 0) S.movimenti.push({id:uid(), ts:m.ts+1, importo:extra, fonte:m.fonte, desc:(m.desc||a.nome)+' (oltre il messo da parte)', cat:m.cat||'Salute', tipo:'var'});
   if(avanzo > 0) S.entrate.push({id:uid(), data:isoDate(today()), importo:avanzo, nota:'Avanzato da '+a.nome});
   if(coperto === 0) S.movimenti = S.movimenti.filter(x=>x!==m);
-  S.periodo.quote = Object.assign({}, S.periodo.quote, {[a.id]:0}); // la quota di questo mese non serve più
   a.ultimoPagamento = {ts:m.ts, importo:pagato};
+  if(a.senzaData){ a.accantonato = round2(acc - coperto); save(); render(); toast(`✓ ${a.nome}: ${fmt(coperto)} dalla riserva`+(extra>0?` · ${fmt(extra)} dal budget`:'')); return; }
+  S.periodo.quote = Object.assign({}, S.periodo.quote, {[a.id]:0}); // la quota di questo mese non serve più
   if(a.unaTantum) S.annuali = S.annuali.filter(x=>x!==a);
   else { a.accantonato = 0; if(a.scadenza){ const d = parseDate(a.scadenza); d.setFullYear(d.getFullYear()+1); a.scadenza = isoDate(d); } }
   save(); render();
@@ -1278,6 +1284,9 @@ function creaReport(p){
     ['Categoria principale', top ? `${top} · ${fmt(cat[top]?.tot||0)} (${speso? Math.round((cat[top]?.tot||0)/speso*100):0}%)` : '—'],
     ['Numero di acquisti', varie.length],
     ['Spesa media per acquisto', EUR(varie.length ? speso/varie.length : 0)],
+    [],
+    [H('Consigli')],
+    ...consigliCiclo(p, prec).map(x=>[x]),
   ];
 
   // ---- foglio categorie
@@ -1313,6 +1322,7 @@ function creaReport(p){
 
   const fogli = [
     {nome:'Riepilogo', righe:riep, larghezze:[34,16,26,14]},
+    {nome:'Per l\'IA', righe:[[{v:'Da incollare nella chat con l\'IA (insieme a questo file)', s:5}], [], ...testoPerIA(p).split('\n').map(r=>[r])], larghezze:[140]},
     {nome:'Categorie', righe:fCat, larghezze:[20,13,13,10,18,...(prec?[17,13]:[]),28], blocca:3},
     {nome:'Giorno per giorno', righe:fGiorni, larghezze:[12,9,12,14,13,19], blocca:1},
     {nome:'Negozi e spese alte', righe:fTop, larghezze:[30,40,16,12]},
@@ -1322,6 +1332,46 @@ function creaReport(p){
   return XL.cartella(fogli);
 }
 
+function testoPerIA(p){
+  const cicli = cicliReport(), idx = cicli.findIndex(x=>x.inizio===p.inizio), prec = cicli[idx+1]||null;
+  const varie = movimentiCiclo(p).filter(m=>m.tipo==='var'), speso = varie.reduce((t,m)=>t+m.importo,0);
+  const cat = categorieCiclo(p), catP = prec ? categorieCiclo(prec) : {};
+  const giorni = Math.max(1, daysBetween(parseDate(p.inizio), parseDate(p.fineDati||p.fine))+1);
+  const st = statoFondo(), imp = S.annuali.find(a=>a.senzaData);
+  const e = v => fmt(v).replace(/\u00a0/g,' ');
+  const righe = [
+    'Sei un consulente di finanza personale pratico e concreto. Analizza i dati del mio ciclo di stipendio (dati esportati dalla mia app di budget NotiPay) e rispondi in italiano.',
+    'Voglio: 1) dove vanno davvero i miei soldi e cosa è cambiato rispetto al ciclo prima; 2) 3-5 azioni concrete e misurabili per spendere meglio, con quanto risparmierei al mese; 3) un giudizio sul fondo di emergenza e sulla riserva per gli imprevisti; 4) un tetto realistico per le categorie dove spendo di più. Non darmi consigli generici e segnala se i dati sono incompleti.',
+    '',
+    `CICLO: dal ${parseDate(p.inizio).toLocaleDateString('it-IT')} al ${parseDate(p.fine).toLocaleDateString('it-IT')}${p.corrente?` (in corso, dati fino a oggi: ${giorni} giorni)`:''}`,
+    `Stipendio ${e(p.stipendio||0)} · entrate extra ${e(p.entrate||0)} · spese fisse ${e(p.fisse||0)} · accantonamenti per scadenze ${e(p.quote||0)} · risparmio da spostare ${e(p.risparmio||0)}`,
+    `Disponibile per le spese di tutti i giorni: ${e(p.disponibile||0)} · speso: ${e(speso)} (${varie.length} acquisti) · ${p.corrente?'resta':'avanzo'}: ${e((p.disponibile||0)-speso)}`,
+    prec ? `Ciclo precedente (${parseDate(prec.inizio).toLocaleDateString('it-IT')} → ${parseDate(prec.fine).toLocaleDateString('it-IT')}): disponibile ${e(prec.disponibile||0)}, speso ${e(movimentiCiclo(prec).filter(m=>m.tipo==='var').reduce((t,m)=>t+m.importo,0))}` : 'Nessun ciclo precedente disponibile.',
+    '',
+    'SPESE PER CATEGORIA (questo ciclo | ciclo prima):',
+    ...Object.entries(cat).sort((a,b)=>b[1].tot-a[1].tot).map(([k,x])=>`- ${k}: ${e(x.tot)} in ${x.n} acquisti (${speso?Math.round(x.tot/speso*100):0}%)${prec?` | ${e(catP[k]?.tot||0)}`:''}`),
+    '',
+    'SPESE FISSE MENSILI: ' + (S.fisse.filter(f=>f.attiva).map(f=>`${f.nome} ${e(f.importo)}${f.conto?' (bonifico verso un mio conto)':''}`).join('; ') || 'nessuna'),
+    'SCADENZE CON ACCANTONAMENTO: ' + (S.annuali.filter(a=>!a.senzaData).map(a=>`${a.nome} ${e(a.importo)}${a.scadenza?' entro il '+parseDate(a.scadenza).toLocaleDateString('it-IT'):''}, messi da parte ${e(a.accantonato||0)}`).join('; ') || 'nessuna'),
+    'RISERVA IMPREVISTI: ' + (imp ? `${e(imp.accantonato||0)} su un tetto di ${e(imp.importo)}, ${e(imp.quotaFissa||0)} al mese` : 'non impostata'),
+    'FONDO DI EMERGENZA: ' + (st.conti.length ? `${e(st.ha)} (obiettivo ${st.mesi} mesi = ${e(st.obiettivo)}; spese essenziali stimate ${e(st.es.totale)} al mese)` : 'non impostato'),
+    '',
+    'CONSIGLI GIÀ CALCOLATI DALL\'APP:',
+    ...consigliCiclo(p, prec).map(x=>'- '+x),
+    '',
+    'Nel file Excel allegato (se presente) trovi anche il dettaglio giorno per giorno, i negozi e tutti i movimenti.'
+  ];
+  return righe.join('\n');
+}
+function copiaPerIA(inizio){
+  const p = cicliReport().find(x=>x.inizio===inizio); if(!p) return;
+  const t = testoPerIA(p);
+  const ta = document.createElement('textarea'); ta.value = t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+  let ok = false; try{ ok = document.execCommand('copy'); }catch(e){}
+  ta.remove();
+  if(!ok && navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast('📋 Copiato: incollalo nella chat con l\'IA')).catch(()=>toast('Non sono riuscito a copiare'));
+  else toast(ok ? '📋 Copiato: incollalo nella chat con l\'IA' : 'Non sono riuscito a copiare');
+}
 const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 function nomeReport(p){ return `NotiPay report ${p.inizio}${p.corrente?' (in corso)':' - '+p.fine}.xlsx`; }
 function aBase64(u8){ let s=''; for(let i=0;i<u8.length;i+=0x8000) s += String.fromCharCode.apply(null, u8.subarray(i,i+0x8000)); return btoa(s); }
@@ -1348,7 +1398,9 @@ function apriReport(inizio){
   openSheet(`<h3>📊 Report ${fDM(parseDate(p.inizio))} → ${fDM(parseDate(p.fine))}</h3>
     <p class="muted">${p.corrente?'Ciclo in corso: i dati arrivano fino a oggi.':'Ciclo chiuso.'} Speso ${fmt(speso)} su ${fmt(p.disponibile||0)} disponibili.</p>
     <p class="muted">Dentro: riepilogo, categorie, giorno per giorno, negozi e spese più alte, tutti i movimenti${(p.scadenze||[]).length?', scadenze':''}.</p>
+    ${(()=>{ const cicli = cicliReport(), i = cicli.findIndex(x=>x.inizio===p.inizio), co = consigliCiclo(p, cicli[i+1]||null); return co.length ? `<div style="margin:8px 0"><b>💡 Consigli</b>${co.map(x=>`<div class="s muted" style="margin-top:6px">• ${esc(x)}</div>`).join('')}</div>` : ''; })()}
     <button class="btn" style="width:100%;margin-top:6px" onclick="scaricaReport('${p.inizio}')">⬇️ Scarica Excel</button>
+    <button class="btn sec" style="width:100%;margin-top:8px" onclick="copiaPerIA('${p.inizio}')">📋 Copia per l'IA</button>
     <button class="btn sec" style="width:100%;margin-top:8px" onclick="scaricaReport('${p.inizio}', true)">📤 Condividi</button>`);
 }
 function renderReport(){
@@ -1365,7 +1417,7 @@ function renderReport(){
    qui le registriamo una alla volta (se serve una domanda, aspettiamo la risposta)
    ===================================================================== */
 const APP = window.FinanzeAndroid || null;
-const VERSIONE_PAGINA = '27 novembre 2026';
+const VERSIONE_PAGINA = '27 novembre 2026 (2)';
 var ORA_NOTIFICA = 0;
 let esternoFino = 0; // finché sei in una schermata aperta dall'app (voce, file, condividi) non si blocca
 function nuoveNotifiche(){ if(APP) dopoSblocco(scaricaCoda); }
@@ -1477,6 +1529,98 @@ function chiediPermessoNotifiche(){
    ===================================================================== */
 let vista='oggi', filtroMov='periodo';
 const TITOLI = {oggi:'Oggi', mov:'Movimenti', conti:'Conti', fisse:'Fisse e scadenze', imp:'Impostazioni', diag:'Diagnostica'};
+/* ---------- fondo di emergenza: quanti mesi di spese essenziali sei coperto ---------- */
+const CAT_ESSENZIALI = ['Spesa','Carburante','Auto e trasporti','Bollette e servizi','Salute','Casa'];
+function speseEssenziali(){
+  // fisse vere (non i bonifici verso i tuoi conti) + media mensile delle categorie essenziali negli ultimi cicli
+  const fisse = S.fisse.filter(f=>f.attiva && !f.conto).reduce((t,f)=>t+f.importo,0);
+  const chiusi = (S.storicoPeriodi||[]).slice(-3);
+  let mensile;
+  const ess = (da,a)=>S.movimenti.filter(m=>m.tipo==='var' && m.ts>=da && m.ts<a && CAT_ESSENZIALI.includes(m.cat)).reduce((t,m)=>t+m.importo,0);
+  if(chiusi.length){
+    mensile = chiusi.reduce((t,p)=>{ const da=parseDate(p.inizio).getTime(), a=parseDate(p.fine).getTime()+DAY; return t + ess(da,a)/Math.max(1,(a-da)/DAY)*30; },0)/chiusi.length;
+  } else {
+    const da = parseDate(S.periodo.inizio).getTime(), gg = Math.max(7, (Date.now()-da)/DAY);
+    mensile = ess(da, Date.now()+1)/gg*30;
+  }
+  return {fisse:round2(fisse), variabili:round2(mensile), totale:round2(fisse+mensile), stimato:!chiusi.length};
+}
+function statoFondo(){
+  const f = S.fondo||{}; const mesi = f.mesi||3;
+  const conti = (f.conti||[]).map(id=>S.conti.find(c=>c.id===id)).filter(Boolean);
+  const ha = round2(conti.reduce((t,c)=>t+(+saldoConto(c)||0),0));
+  const es = speseEssenziali(), obiettivo = round2(es.totale*mesi);
+  return {conti, mesi, ha, es, obiettivo, coperti: es.totale ? ha/es.totale : 0, manca: Math.max(0, round2(obiettivo-ha))};
+}
+function renderFondo(){
+  const box = document.getElementById('cardFondo'); if(!box) return;
+  const st = statoFondo();
+  if(!st.conti.length){ box.innerHTML = `<div class="card-h"><h2>🛟 Fondo di emergenza</h2><span class="link">Imposta ›</span></div><div class="s muted">Scegli su quale conto tenerlo: l'app ti dice per quanti mesi sei coperto.</div>`; return; }
+  const perc = st.obiettivo ? Math.min(100, st.ha/st.obiettivo*100) : 0;
+  box.innerHTML = `<div class="card-h"><h2>🛟 Fondo di emergenza</h2><span class="link">›</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="v" style="font-size:22px;font-weight:800">${fmt(st.ha)}</div><div class="s muted">obiettivo ${fmt0(st.obiettivo)}</div></div>
+    <div class="bar" style="margin:8px 0"><div style="width:${perc}%;background:${perc>=100?'var(--lime)':'var(--accent)'}"></div></div>
+    <div class="s muted">Coperto per <b style="color:var(--text)">${st.coperti.toFixed(1).replace('.',',')} mesi</b> su ${st.mesi} · ${st.es.totale?fmt0(st.es.totale)+' al mese di spese essenziali':''}</div>`;
+}
+function impostaFondo(){
+  const f = S.fondo||{}, st = statoFondo();
+  const nonBusta = S.conti.filter(c=>!c.busta);
+  const rata = st.manca ? Math.ceil(st.manca/12) : 0;
+  const dest = st.conti[0];
+  openSheet(`<h3>🛟 Fondo di emergenza</h3>
+    <p class="muted">Soldi da non toccare, per un periodo senza stipendio o una spesa grossa improvvisa. Meglio su un conto separato e facile da raggiungere.</p>
+    <label>Su quali conti lo tieni</label>
+    ${nonBusta.length ? nonBusta.map(c=>`<label style="display:flex;align-items:center;gap:10px;color:var(--text);margin:6px 0"><input type="checkbox" class="fConto" value="${c.id}" style="width:auto" ${(f.conti||[]).includes(c.id)?'checked':''}> ${esc(c.nome)} <span class="muted">${saldoConto(c)!=null?fmt(saldoConto(c)):'saldo non inserito'}</span></label>`).join('') : '<p class="muted">Aggiungi prima un conto in Impostazioni → Conti e carte.</p>'}
+    <label>Quanti mesi di spese vuoi coprire</label>
+    <select id="fMesi">${[3,4,6,9,12].map(n=>`<option value="${n}" ${n===(f.mesi||3)?'selected':''}>${n} mesi</option>`).join('')}</select>
+    <div class="row"><div class="grow"><div class="t">Spese essenziali al mese</div><div class="s">Fisse ${fmt0(st.es.fisse)} + spesa, carburante, bollette, salute… ${fmt0(st.es.variabili)}${st.es.stimato?' (stima: diventa precisa dopo il primo ciclo)':''}</div></div><div class="amt">${fmt0(st.es.totale)}</div></div>
+    ${st.conti.length && st.manca>0 ? `<div class="row"><div class="grow"><div class="t">Per arrivarci in un anno</div><div class="s">Mancano ${fmt0(st.manca)}</div></div><div class="amt ok">${fmt0(rata)}/mese</div></div>
+      <button class="btn sec" style="width:100%;margin-top:6px" onclick="S.risparmio=S.risparmio||{};S.risparmio['${dest.id}']=${rata};salvaFondo();toast('Ogni mese ${fmt0(rata)} da spostare su ${esc(dest.nome).replace(/'/g,'')}')">Metti ${fmt0(rata)} al mese su ${esc(dest.nome)}</button>` : ''}
+    <button class="btn" style="width:100%;margin-top:10px" onclick="salvaFondo()">Salva</button>`);
+}
+function salvaFondo(){
+  S.fondo = {conti:[...document.querySelectorAll('.fConto')].filter(x=>x.checked).map(x=>x.value), mesi:+document.getElementById('fMesi').value||3};
+  save(); closeSheet(); render();
+}
+
+/* ---------- consigli: cosa è cambiato e dove si può migliorare ---------- */
+function consigliCiclo(p, prec){
+  const out = [];
+  const varie = movimentiCiclo(p).filter(m=>m.tipo==='var');
+  const speso = varie.reduce((t,m)=>t+m.importo,0);
+  const inizio = parseDate(p.inizio), fine = parseDate(p.fineDati||p.fine);
+  const giorni = Math.max(1, daysBetween(inizio, fine)+1);
+  const cat = categorieCiclo(p), catPrec = prec ? categorieCiclo(prec) : null;
+  const giorniPrec = prec ? Math.max(1, daysBetween(parseDate(prec.inizio), parseDate(prec.fine))+1) : 1;
+  // categoria cresciuta di più (confronto per giorno, così vale anche a ciclo in corso)
+  if(catPrec){
+    const cresc = Object.keys(cat).map(k=>({k, ora:cat[k].tot/giorni*30, prima:(catPrec[k]?.tot||0)/giorniPrec*30})).filter(x=>x.prima>5 && x.ora>x.prima*1.15).sort((a,b)=>(b.ora-b.prima)-(a.ora-a.prima))[0];
+    if(cresc) out.push(`${cresc.k}: +${Math.round((cresc.ora/cresc.prima-1)*100)}% rispetto al ciclo prima (circa ${fmt0(cresc.ora-cresc.prima)} in più al mese).`);
+    const calo = Object.keys(catPrec).map(k=>({k, ora:(cat[k]?.tot||0)/giorni*30, prima:catPrec[k].tot/giorniPrec*30})).filter(x=>x.prima>10 && x.ora<x.prima*0.85).sort((a,b)=>(b.prima-b.ora)-(a.prima-a.ora))[0];
+    if(calo) out.push(`Bene: ${calo.k} −${Math.round((1-calo.ora/calo.prima)*100)}% rispetto al ciclo prima.`);
+  }
+  // piccole spese che pesano in un anno
+  ['Bar e caffè','Ristorante','Tabacchi','Svago','Tecnologia e online'].forEach(k=>{
+    if(cat[k] && cat[k].tot/giorni*365 >= 300) out.push(`${k}: ${fmt(cat[k].tot/giorni)} al giorno, cioè circa ${fmt0(cat[k].tot/giorni*365)} in un anno.`);
+  });
+  // giorni sopra il budget e weekend
+  if(p.disponibile){
+    const medio = p.disponibile/(p.giorniTot||giorni);
+    const perG = {}; varie.forEach(m=>{ const k = isoDate(dayStart(m.ts)); perG[k]=(perG[k]||0)+m.importo; });
+    const sopra = Object.entries(perG).filter(([,v])=>v>medio);
+    if(sopra.length >= 3){
+      const we = sopra.filter(([d])=>[0,6].includes(parseDate(d).getDay())).length;
+      out.push(`Hai superato il budget medio ${sopra.length} giorni su ${giorni}${we>=sopra.length/2?', soprattutto nel weekend':''}.`);
+    }
+  }
+  const nc = varie.filter(m=>m.cat===CAT_NUOVA).length;
+  if(nc) out.push(`${nc} spese sono ancora da classificare: classificale per avere un report più preciso.`);
+  const st = statoFondo();
+  if(st.conti.length && st.coperti < st.mesi) out.push(`Fondo di emergenza: coperto per ${st.coperti.toFixed(1).replace('.',',')} mesi su ${st.mesi}.${p.avanzo>0?` Metterci metà dell'avanzo (${fmt0(p.avanzo/2)}) lo porterebbe a ${((st.ha+p.avanzo/2)/st.es.totale).toFixed(1).replace('.',',')} mesi.`:''}`);
+  else if(!st.conti.length) out.push('Imposta il fondo di emergenza (tab Conti): ti dice per quanti mesi saresti coperto senza stipendio.');
+  return out;
+}
+
 /* ---------- spese da classificare: l'app chiede una volta e poi impara il negozio ---------- */
 function daClassificare(){ const da = Date.now()-90*DAY; return S.movimenti.filter(m=>m.tipo==='var' && (m.cat===CAT_NUOVA || !m.cat) && m.ts>=da).sort((a,b)=>b.ts-a.ts); }
 function renderClassifica(){
@@ -1627,7 +1771,7 @@ function render(){
     const gg = daysBetween(c.oggi, carb.prossimo);
     prev += `<div class="row ic"><div class="ico">⛽</div><div class="grow"><div class="t">Rifornimento</div><div class="s">${gg<=0?'A breve':fDM(carb.prossimo)+' · tra '+gg+' gg'}</div></div><div class="amt">~${fmt0(carb.mediaImp)}</div></div>`;
   }
-  const scad = [...S.annuali].sort((a,b)=>(a.scadenza||'9999').localeCompare(b.scadenza||'9999'));
+  const scad = [...S.annuali].filter(a=>!a.senzaData).sort((a,b)=>(a.scadenza||'9999').localeCompare(b.scadenza||'9999'));
   scad.slice(0,3).forEach(a=>{
     const gg = a.scadenza ? daysBetween(c.oggi, parseDate(a.scadenza)) : null;
     const quando = !a.scadenza ? '<span class="warn">Manca la data</span>' : gg<0 ? '<span class="bad">Scaduta il '+fDM(parseDate(a.scadenza))+'</span>' : `<span class="${gg<=30?'bad':''}">${fDM(parseDate(a.scadenza))} · tra ${gg} gg</span>`;
@@ -1643,6 +1787,7 @@ function render(){
   renderSaldi();
   renderReport();
   renderClassifica();
+  renderFondo();
 
   // ---- MOVIMENTI
   let lista = [...S.movimenti].sort((a,b)=>b.ts-a.ts);
@@ -1780,14 +1925,18 @@ function salvaFissa(id){
 }
 
 function editAnnuale(id){
-  const a = S.annuali.find(x=>x.id===id) || {nome:'',importo:'',scadenza:'',accantonato:0,parole:''};
-  openSheet(`<h3>${id?'Modifica':'Nuova'} scadenza annuale</h3>
+  const a = S.annuali.find(x=>x.id===id) || (id==='imprevisti' ? {nome:'Imprevisti',importo:600,senzaData:true,quotaFissa:30,accantonato:0,parole:''} : {nome:'',importo:'',scadenza:'',accantonato:0,parole:''});
+  if(id==='imprevisti') id = '';
+  const sd = !!a.senzaData;
+  openSheet(`<h3>${sd ? '🔧 Riserva imprevisti' : (id?'Modifica':'Nuova')+' scadenza annuale'}</h3>
+    ${sd ? '<p class="muted">Per le spese che sai che capiteranno ma non sai quando: guasti dell\'auto, gomme, elettrodomestici, medico. Quando succede, paghi da qui e il budget non salta.</p>' : ''}
     <label>Nome</label><input id="nNome" value="${esc(a.nome)}" placeholder="es. Bollo, Assicurazione, Revisione">
-    <label>Importo (€)</label><input id="nImp" type="text" inputmode="decimal" value="${String(a.importo).replace('.',',')}">
-    <label>Prossima scadenza</label><input id="nScad" type="date" value="${a.scadenza}">
+    <label>${sd ? 'Tetto della riserva (€)' : 'Importo (€)'}</label><input id="nImp" type="text" inputmode="decimal" value="${String(a.importo).replace('.',',')}">
+    ${sd ? `<label>Quanto mettere da parte ogni mese (€)</label><input id="nQuota" type="text" inputmode="decimal" value="${String(a.quotaFissa||0).replace('.',',')}"><input id="nScad" type="hidden" value="">` : `<label>Prossima scadenza</label><input id="nScad" type="date" value="${a.scadenza}">`}
     <label>Già messo da parte (€)</label><input id="nAcc" type="text" inputmode="decimal" value="${String(a.accantonato||0).replace('.',',')}">
     <label>Parole per riconoscerla nelle notifiche</label><input id="nParole" value="${esc(a.parole)}" placeholder="es. nome dello studio">
-    <label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="nUna" style="width:auto" ${a.unaTantum?'checked':''}> Una tantum: dopo il pagamento la voce sparisce</label>
+    ${sd ? '<input type="checkbox" id="nUna" style="display:none">' : `<label style="display:flex;align-items:center;gap:10px;color:var(--text)"><input type="checkbox" id="nUna" style="width:auto" ${a.unaTantum?'checked':''}> Una tantum: dopo il pagamento la voce sparisce</label>`}
+    <input type="hidden" id="nSenza" value="${sd?'1':''}">
     ${id?`<button class="btn sec" style="width:100%;margin-top:16px" onclick="segnaAnnualePagata('${id}')">✓ L'ho pagata</button>`:''}
     <div class="grid2" style="margin-top:10px">${id?`<button class="btn danger" onclick="S.annuali=S.annuali.filter(x=>x.id!=='${id}');save();closeSheet();render()">Elimina</button>`:'<span></span>'}<button class="btn" onclick="salvaAnnuale('${id||''}')">Salva</button></div>`);
 }
@@ -1796,6 +1945,7 @@ function salvaAnnuale(id){
   if(!nome || isNaN(v)){ toast('Inserisci nome e importo'); return; }
   const acc = numeroIt(document.getElementById('nAcc').value||'0');
   const dati = {nome, importo:round2(v), scadenza:document.getElementById('nScad').value, accantonato:isNaN(acc)?0:round2(acc), parole:document.getElementById('nParole').value.trim(), unaTantum:document.getElementById('nUna').checked};
+  if(document.getElementById('nSenza')?.value){ const q = numeroIt(document.getElementById('nQuota').value||'0'); Object.assign(dati, {senzaData:true, quotaFissa:isNaN(q)?0:round2(q), scadenza:'', unaTantum:false}); }
   if(id) Object.assign(S.annuali.find(x=>x.id===id), dati); else S.annuali.push({id:uid(), ...dati});
   save(); closeSheet(); render();
 }
